@@ -1,0 +1,89 @@
+# ─── Python ───────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+dist/
+build/
+.Python
+
+# ─── Node.js Backend ──────────────────────────────
+backend/node_modules/
+backend/dist/
+backend/build/
+backend/coverage/
+backend/.eslintcache
+backend/logs/
+backend/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Uploads (resume files) ───────────────────────
+backend/uploads/
+
+# ─── Chrome / Browser sessions ────────────────────
+indeed_bot_chrome/
+indeed_uc_session/
+indeed_bot_profile/
+chromedriver*
+
+# ─── Puppeteer cache ──────────────────────────────
+backend/.cache/
+.local-chromium/
+backend/.local-chromium/
+
+# ─── Environment variables ────────────────────────
+.env
+.env.local
+.env.production
+.env.development
+.env.example.local
+backend/.env
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+
+# ─── Frontend (React) ─────────────────────────────
+frontend/node_modules/
+frontend/build/
+frontend/.pnp
+frontend/.pnp.js
+frontend/coverage/
+frontend/.eslintcache
+
+# ─── MongoDB local data ───────────────────────────
+data/db/
+*.lock
+
+# ─── OS ───────────────────────────────────────────
+.DS_Store
+.DS_Store?
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# ─── IDE ──────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+*.tmp
+
+# ─── Logs ─────────────────────────────────────────
+logs/
+*.log
+pids/
+*.pid
+*.seed
+*.pid.lock
