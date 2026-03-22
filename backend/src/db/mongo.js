@@ -34,9 +34,10 @@ async function connectDB() {
 
   try {
     await mongoose.connect(uri, {
-      // Mongoose 8+ doesn't need useNewUrlParser / useUnifiedTopology
-      serverSelectionTimeoutMS: 5000,   // fail fast if Atlas is unreachable
+      serverSelectionTimeoutMS: 10000,
       socketTimeoutMS:          45000,
+      tls:                      true,
+      tlsInsecure:              true,   // fixes Windows OpenSSL TLS issue
     });
 
     _connected = true;
