@@ -1,8 +1,0 @@
-fastapi
-uvicorn
-python-multipart
-pdfminer.six
-requests
-beautifulsoup4
-selenium
-webdriver-manager
