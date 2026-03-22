@@ -1,4 +1,4 @@
-# Dependencies
+git add .# Dependencies
 node_modules/
 
 # Environment secrets — NEVER commit this
