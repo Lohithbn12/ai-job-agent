@@ -338,14 +338,25 @@ export const GLOBAL_CSS = `
     .sidebar.open { transform:none; }
     .sidebar-overlay.open { display:block; }
     .content-area { margin-left:0 !important; }
-    .top-bar { padding:0 16px !important; }
+    .top-bar { padding:0 12px !important; }
     .hamburger { display:flex !important; }
-    .page-main { padding:20px 14px !important; }
+    .page-main { padding:16px 12px !important; }
     .two-col { grid-template-columns:1fr !important; }
     .card-grid { grid-template-columns:1fr !important; }
     .ats-cols { flex-direction:column !important; }
-    .hero-title { font-size:30px !important; }
-    .results-h2 { font-size:22px !important; }
+    .hero-title { font-size:26px !important; }
+    .results-h2 { font-size:20px !important; }
+    .nav-item { padding:10px 12px !important; font-size:13px !important; }
+  }
+
+  @media (max-width:480px) {
+    .page-main { padding:12px 10px !important; }
+    .hero-title { font-size:22px !important; }
+    .card { border-radius:10px !important; }
+    .section-card { padding:14px !important; border-radius:10px !important; }
+    .btn-primary { padding:10px 16px !important; font-size:13px !important; }
+    .btn-ghost   { padding:8px 14px !important; font-size:12px !important; }
+    .inp, .inp-plain, .dark-input { font-size:14px !important; }
   }
 `;
 

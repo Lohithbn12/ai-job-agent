@@ -1,8 +1,5 @@
 // ─── Auth.js ─────────────────────────────────────────────────────────────────
-// Premium Login — Option O (Deep Ocean)
-// Near-black bg · Blue accents · Split layout · No stats
-// Import in App.js: import AuthWrapper from "./Auth";
-
+// Premium Login — Option O (Deep Ocean) — Fully Mobile Responsive
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { API } from "./constants";
@@ -15,24 +12,73 @@ const ANIM_CSS = `
   @keyframes spin {
     to { transform: rotate(360deg); }
   }
-  @keyframes shimmer {
-    0%   { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 0.5; transform: scale(1); }
-    50%       { opacity: 1;   transform: scale(1.03); }
-  }
-  @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50%       { transform: translateY(-6px); }
-  }
   @keyframes orb {
     0%, 100% { transform: translate(0,0); }
     50%       { transform: translate(15px,-10px); }
   }
   .ocean-input::placeholder { color: rgba(255,255,255,0.18) !important; }
   .ocean-input:focus { outline: none !important; }
+
+  /* ── Auth Layout ── */
+  .auth-card {
+    display: flex;
+    width: 100%;
+    max-width: 860px;
+    min-height: 520px;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+    animation: fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) forwards;
+  }
+  .auth-left {
+    width: 42%;
+    background: linear-gradient(180deg, #0c1a3d 0%, #0f2854 50%, #0c1a3d 100%);
+    padding: 48px 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-right: 1px solid rgba(255,255,255,0.05);
+    position: relative;
+    overflow: hidden;
+  }
+  .auth-right {
+    flex: 1;
+    background: #020b1a;
+    padding: 48px 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  /* ── Mobile: stack vertically, hide left panel ── */
+  @media (max-width: 640px) {
+    .auth-card {
+      flex-direction: column;
+      min-height: unset;
+      border-radius: 16px;
+      max-width: 100%;
+    }
+    .auth-left {
+      width: 100%;
+      padding: 24px 20px;
+      min-height: unset;
+      border-right: none;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .auth-left-features { display: none !important; }
+    .auth-left-tagline  { display: none !important; }
+    .auth-left-version  { display: none !important; }
+    .auth-right {
+      padding: 28px 20px 32px;
+    }
+    .auth-heading { font-size: 22px !important; }
+    .auth-sub     { font-size: 12px !important; }
+  }
+
+  @media (max-width: 400px) {
+    .auth-right { padding: 22px 16px 28px; }
+  }
 `;
 
 export default function AuthWrapper({ onLogin }) {
@@ -45,35 +91,33 @@ export default function AuthWrapper({ onLogin }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "20px",
+        padding: "16px",
         position: "relative",
         overflow: "hidden",
       }}>
         {/* Background orbs */}
         <div style={{
-          position: "absolute", width: 500, height: 500, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(29,78,216,0.12) 0%, transparent 70%)",
-          top: "-150px", left: "-100px",
-          animation: "orb 12s ease-in-out infinite",
+          position:"absolute", width:500, height:500, borderRadius:"50%",
+          background:"radial-gradient(circle, rgba(29,78,216,0.12) 0%, transparent 70%)",
+          top:"-150px", left:"-100px", animation:"orb 12s ease-in-out infinite",
+          pointerEvents:"none",
         }} />
         <div style={{
-          position: "absolute", width: 400, height: 400, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(37,99,235,0.08) 0%, transparent 70%)",
-          bottom: "-100px", right: "-80px",
-          animation: "orb 9s ease-in-out infinite reverse",
+          position:"absolute", width:400, height:400, borderRadius:"50%",
+          background:"radial-gradient(circle, rgba(37,99,235,0.08) 0%, transparent 70%)",
+          bottom:"-100px", right:"-80px", animation:"orb 9s ease-in-out infinite reverse",
+          pointerEvents:"none",
         }} />
         {/* Grid lines */}
         <div style={{
-          position: "absolute", inset: 0,
-          backgroundImage: "linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-          pointerEvents: "none",
+          position:"absolute", inset:0,
+          backgroundImage:"linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)",
+          backgroundSize:"40px 40px", pointerEvents:"none",
         }} />
-        {/* Radial fade over grid */}
         <div style={{
-          position: "absolute", inset: 0,
-          background: "radial-gradient(ellipse at center, transparent 40%, #020617 80%)",
-          pointerEvents: "none",
+          position:"absolute", inset:0,
+          background:"radial-gradient(ellipse at center, transparent 40%, #020617 80%)",
+          pointerEvents:"none",
         }} />
 
         <LoginPage onLogin={onLogin} />
@@ -119,165 +163,121 @@ function LoginPage({ onLogin }) {
     } finally { setLoading(false); }
   };
 
+  const inputStyle = (field) => ({
+    width: "100%",
+    padding: "13px 13px 13px 42px",
+    background: focused === field ? "rgba(59,130,246,0.08)" : "rgba(255,255,255,0.04)",
+    border: `1px solid ${focused === field ? "rgba(59,130,246,0.5)" : "rgba(255,255,255,0.07)"}`,
+    borderRadius: 11,
+    fontSize: 14,
+    color: "white",
+    outline: "none",
+    transition: "all 0.2s",
+    boxShadow: focused === field ? "0 0 0 3px rgba(59,130,246,0.12)" : "none",
+  });
+
   return (
-    <div style={{
-      display: "flex",
-      width: "100%",
-      maxWidth: 860,
-      minHeight: 520,
-      borderRadius: 20,
-      overflow: "hidden",
-      border: "1px solid rgba(255,255,255,0.06)",
-      boxShadow: "0 40px 80px rgba(0,0,0,0.6)",
-      animation: ready ? "fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) forwards" : "none",
-      opacity: ready ? 1 : 0,
-      position: "relative",
-      zIndex: 2,
-    }}>
+    <div className="auth-card" style={{ opacity: ready ? 1 : 0, position:"relative", zIndex:2 }}>
 
       {/* ── LEFT PANEL ── */}
-      <div style={{
-        width: "42%",
-        background: "linear-gradient(180deg, #0c1a3d 0%, #0f2854 50%, #0c1a3d 100%)",
-        padding: "48px 40px",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        borderRight: "1px solid rgba(255,255,255,0.05)",
-        position: "relative",
-        overflow: "hidden",
-      }}>
-        {/* Subtle top highlight */}
+      <div className="auth-left">
+        {/* Top shimmer */}
         <div style={{
-          position: "absolute", top: 0, left: 0, right: 0, height: 1,
-          background: "linear-gradient(90deg, transparent, rgba(59,130,246,0.4), transparent)",
-        }} />
-
-        {/* Inner glow */}
-        <div style={{
-          position: "absolute", top: "30%", left: "50%",
-          transform: "translate(-50%,-50%)",
-          width: 260, height: 260, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(37,99,235,0.08) 0%, transparent 70%)",
-          pointerEvents: "none",
+          position:"absolute", top:0, left:0, right:0, height:1,
+          background:"linear-gradient(90deg, transparent, rgba(59,130,246,0.4), transparent)",
         }} />
 
         {/* Logo */}
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 40 }}>
+        <div style={{ position:"relative", zIndex:1 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:24 }}>
             <div style={{
-              width: 44, height: 44, borderRadius: 13,
-              background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 20, fontWeight: 800, color: "white",
-              boxShadow: "0 6px 20px rgba(59,130,246,0.4)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              width:40, height:40, borderRadius:12,
+              background:"linear-gradient(135deg, #3b82f6, #1d4ed8)",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              fontSize:18, fontWeight:800, color:"white",
+              boxShadow:"0 6px 20px rgba(59,130,246,0.4)",
+              border:"1px solid rgba(255,255,255,0.12)",
+              flexShrink:0,
             }}>J</div>
             <div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: "white", letterSpacing: "-0.5px", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                JobScan
-              </div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", letterSpacing: "1.5px", textTransform: "uppercase" }}>
+              <div style={{ fontSize:16, fontWeight:800, color:"white", letterSpacing:"-0.5px" }}>JobScan</div>
+              <div style={{ fontSize:9, color:"rgba(255,255,255,0.3)", letterSpacing:"1.5px", textTransform:"uppercase" }}>
                 AI Career Platform
               </div>
             </div>
           </div>
 
           {/* Tagline */}
-          <div style={{ marginBottom: 32 }}>
+          <div className="auth-left-tagline" style={{ marginBottom:24 }}>
             <h2 style={{
-              fontSize: 26, fontWeight: 800, color: "white",
-              letterSpacing: "-0.8px", lineHeight: 1.2, marginBottom: 12,
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontSize:22, fontWeight:800, color:"white",
+              letterSpacing:"-0.8px", lineHeight:1.2, marginBottom:10,
             }}>
               Find your<br />
               <span style={{
-                background: "linear-gradient(90deg, #60a5fa, #3b82f6)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
+                background:"linear-gradient(90deg, #60a5fa, #3b82f6)",
+                WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent",
               }}>next role.</span>
             </h2>
-            <p style={{
-              fontSize: 13, color: "rgba(255,255,255,0.35)",
-              lineHeight: 1.7, maxWidth: 200,
-            }}>
+            <p style={{ fontSize:12, color:"rgba(255,255,255,0.35)", lineHeight:1.7 }}>
               AI-powered job search across 5 platforms with real-time experience matching.
             </p>
           </div>
 
-          {/* Feature list */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* Features */}
+          <div className="auth-left-features" style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {[
-              ["💼", "Search across 5 job platforms"],
-              ["📄", "ATS-optimised resume builder"],
-              ["🎓", "Free courses & certifications"],
-              ["🎯", "Interview prep & Q&A"],
+              ["💼","Search across 5 job platforms"],
+              ["📄","ATS-optimised resume builder"],
+              ["🎓","Free courses & certifications"],
+              ["🎯","Interview prep & Q&A"],
             ].map(([icon, text]) => (
-              <div key={text} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div key={text} style={{ display:"flex", alignItems:"center", gap:10 }}>
                 <div style={{
-                  width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                  background: "rgba(59,130,246,0.12)",
-                  border: "1px solid rgba(59,130,246,0.15)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 13,
+                  width:26, height:26, borderRadius:7, flexShrink:0,
+                  background:"rgba(59,130,246,0.12)",
+                  border:"1px solid rgba(59,130,246,0.15)",
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  fontSize:12,
                 }}>{icon}</div>
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", lineHeight: 1.4 }}>{text}</span>
+                <span style={{ fontSize:11, color:"rgba(255,255,255,0.45)", lineHeight:1.4 }}>{text}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Bottom tag */}
-        <div style={{
-          fontSize: 11, color: "rgba(255,255,255,0.18)",
-          letterSpacing: "0.3px",
-        }}>
+        {/* Version */}
+        <div className="auth-left-version" style={{ fontSize:10, color:"rgba(255,255,255,0.18)" }}>
           v2.1.0 · Built with Node.js + React
         </div>
       </div>
 
-      {/* ── RIGHT PANEL — Form ── */}
-      <div style={{
-        flex: 1,
-        background: "#020b1a",
-        padding: "48px 44px",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-      }}>
-
-        {/* Heading */}
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{
-            fontSize: 26, fontWeight: 700,
-            color: "rgba(255,255,255,0.9)",
-            letterSpacing: "-0.6px", marginBottom: 7,
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
+      {/* ── RIGHT PANEL ── */}
+      <div className="auth-right">
+        <div style={{ marginBottom:24 }}>
+          <h1 className="auth-heading" style={{
+            fontSize:24, fontWeight:700,
+            color:"rgba(255,255,255,0.9)",
+            letterSpacing:"-0.6px", marginBottom:6,
           }}>Welcome back</h1>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", lineHeight: 1.5 }}>
+          <p className="auth-sub" style={{ fontSize:13, color:"rgba(255,255,255,0.3)", lineHeight:1.5 }}>
             Sign in to your dashboard
           </p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        <form onSubmit={handleSubmit} style={{ display:"flex", flexDirection:"column", gap:16 }}>
 
           {/* Email */}
           <div>
             <label style={{
-              fontSize: 11, fontWeight: 600,
-              color: "rgba(255,255,255,0.4)",
-              display: "block", marginBottom: 8,
-              letterSpacing: "0.8px", textTransform: "uppercase",
+              fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.4)",
+              display:"block", marginBottom:7, letterSpacing:"0.8px", textTransform:"uppercase",
             }}>Email Address</label>
-            <div style={{ position: "relative" }}>
+            <div style={{ position:"relative" }}>
               <span style={{
-                position: "absolute", left: 14, top: "50%",
-                transform: "translateY(-50%)", fontSize: 14,
-                pointerEvents: "none",
-                opacity: focused === "email" ? 0.8 : 0.3,
-                transition: "opacity 0.15s",
+                position:"absolute", left:14, top:"50%", transform:"translateY(-50%)",
+                fontSize:14, pointerEvents:"none",
+                opacity: focused==="email" ? 0.8 : 0.3, transition:"opacity 0.15s",
               }}>✉</span>
               <input
                 className="ocean-input"
@@ -287,22 +287,7 @@ function LoginPage({ onLogin }) {
                 onBlur={() => setFocused(null)}
                 type="email"
                 placeholder="you@example.com"
-                style={{
-                  width: "100%",
-                  padding: "13px 14px 13px 42px",
-                  background: focused === "email"
-                    ? "rgba(59,130,246,0.08)"
-                    : "rgba(255,255,255,0.04)",
-                  border: `1px solid ${focused === "email"
-                    ? "rgba(59,130,246,0.5)"
-                    : "rgba(255,255,255,0.07)"}`,
-                  borderRadius: 11,
-                  fontSize: 14, color: "rgba(255,255,255,0.85)",
-                  outline: "none", transition: "all 0.2s",
-                  boxShadow: focused === "email"
-                    ? "0 0 0 3px rgba(59,130,246,0.12)"
-                    : "none",
-                }}
+                style={inputStyle("email")}
               />
             </div>
           </div>
@@ -310,18 +295,14 @@ function LoginPage({ onLogin }) {
           {/* Password */}
           <div>
             <label style={{
-              fontSize: 11, fontWeight: 600,
-              color: "rgba(255,255,255,0.4)",
-              display: "block", marginBottom: 8,
-              letterSpacing: "0.8px", textTransform: "uppercase",
+              fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.4)",
+              display:"block", marginBottom:7, letterSpacing:"0.8px", textTransform:"uppercase",
             }}>Password</label>
-            <div style={{ position: "relative" }}>
+            <div style={{ position:"relative" }}>
               <span style={{
-                position: "absolute", left: 14, top: "50%",
-                transform: "translateY(-50%)", fontSize: 14,
-                pointerEvents: "none",
-                opacity: focused === "password" ? 0.8 : 0.3,
-                transition: "opacity 0.15s",
+                position:"absolute", left:14, top:"50%", transform:"translateY(-50%)",
+                fontSize:14, pointerEvents:"none",
+                opacity: focused==="password" ? 0.8 : 0.3, transition:"opacity 0.15s",
               }}>🔒</span>
               <input
                 className="ocean-input"
@@ -331,122 +312,72 @@ function LoginPage({ onLogin }) {
                 onBlur={() => setFocused(null)}
                 type={showPwd ? "text" : "password"}
                 placeholder="Your password"
-                style={{
-                  width: "100%",
-                  padding: "13px 50px 13px 42px",
-                  background: focused === "password"
-                    ? "rgba(59,130,246,0.08)"
-                    : "rgba(255,255,255,0.04)",
-                  border: `1px solid ${focused === "password"
-                    ? "rgba(59,130,246,0.5)"
-                    : "rgba(255,255,255,0.07)"}`,
-                  borderRadius: 11,
-                  fontSize: 14, color: "rgba(255,255,255,0.85)",
-                  outline: "none", transition: "all 0.2s",
-                  boxShadow: focused === "password"
-                    ? "0 0 0 3px rgba(59,130,246,0.12)"
-                    : "none",
-                }}
+                style={{ ...inputStyle("password"), paddingRight:52 }}
               />
-              <button
-                type="button"
-                onClick={() => setShowPwd(p => !p)}
+              <button type="button" onClick={() => setShowPwd(p => !p)}
                 style={{
-                  position: "absolute", right: 14, top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "none", border: "none", cursor: "pointer",
-                  fontSize: 12, fontWeight: 600,
-                  color: "rgba(255,255,255,0.3)",
-                  transition: "color 0.15s",
+                  position:"absolute", right:14, top:"50%", transform:"translateY(-50%)",
+                  background:"none", border:"none", cursor:"pointer",
+                  fontSize:12, fontWeight:600, color:"rgba(255,255,255,0.35)",
+                  transition:"color 0.15s",
                 }}
-                onMouseEnter={e => e.currentTarget.style.color = "rgba(255,255,255,0.7)"}
-                onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.3)"}
+                onMouseEnter={e => e.currentTarget.style.color="rgba(255,255,255,0.7)"}
+                onMouseLeave={e => e.currentTarget.style.color="rgba(255,255,255,0.35)"}
               >{showPwd ? "Hide" : "Show"}</button>
             </div>
           </div>
 
           {/* Remember me */}
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <label style={{
-              display: "flex", alignItems: "center",
-              gap: 9, cursor: "pointer", userSelect: "none",
-            }}>
-              <div
-                onClick={() => setRememberMe(p => !p)}
-                style={{
-                  width: 18, height: 18, borderRadius: 5,
-                  border: `1.5px solid ${rememberMe ? "rgba(59,130,246,0.7)" : "rgba(255,255,255,0.15)"}`,
-                  background: rememberMe ? "rgba(59,130,246,0.2)" : "transparent",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "all 0.15s", cursor: "pointer", flexShrink: 0,
-                }}
-              >
-                {rememberMe && (
-                  <span style={{ color: "#60a5fa", fontSize: 11, fontWeight: 700, lineHeight: 1 }}>✓</span>
-                )}
+          <div style={{ display:"flex", alignItems:"center" }}>
+            <label style={{ display:"flex", alignItems:"center", gap:9, cursor:"pointer", userSelect:"none" }}>
+              <div onClick={() => setRememberMe(p => !p)} style={{
+                width:18, height:18, borderRadius:5, cursor:"pointer", flexShrink:0,
+                border:`1.5px solid ${rememberMe ? "rgba(59,130,246,0.7)" : "rgba(255,255,255,0.15)"}`,
+                background: rememberMe ? "rgba(59,130,246,0.2)" : "transparent",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                transition:"all 0.15s",
+              }}>
+                {rememberMe && <span style={{ color:"#60a5fa", fontSize:11, fontWeight:700, lineHeight:1 }}>✓</span>}
               </div>
-              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", fontWeight: 500 }}>
-                Remember me
-              </span>
+              <span style={{ fontSize:13, color:"rgba(255,255,255,0.35)", fontWeight:500 }}>Remember me</span>
             </label>
           </div>
 
           {/* Error */}
           {error && (
             <div style={{
-              padding: "11px 14px",
-              background: "rgba(239,68,68,0.08)",
-              border: "1px solid rgba(239,68,68,0.2)",
-              borderRadius: 10, fontSize: 13,
-              color: "#fca5a5",
-              display: "flex", gap: 8, alignItems: "center",
+              padding:"11px 14px",
+              background:"rgba(239,68,68,0.08)",
+              border:"1px solid rgba(239,68,68,0.2)",
+              borderRadius:10, fontSize:13, color:"#fca5a5",
+              display:"flex", gap:8, alignItems:"center",
             }}>
               <span>⚠</span>{error}
             </div>
           )}
 
           {/* Submit */}
-          <button
-            type="submit"
-            disabled={loading}
+          <button type="submit" disabled={loading}
             style={{
-              marginTop: 4,
-              padding: "14px",
-              background: loading
-                ? "rgba(59,130,246,0.2)"
-                : "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-              border: "1px solid rgba(59,130,246,0.3)",
-              borderRadius: 11,
-              fontSize: 15, fontWeight: 700, color: "white",
+              marginTop:4, padding:"14px",
+              background: loading ? "rgba(59,130,246,0.2)" : "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+              border:"1px solid rgba(59,130,246,0.3)",
+              borderRadius:11, fontSize:15, fontWeight:700, color:"white",
               cursor: loading ? "not-allowed" : "pointer",
-              display: "flex", alignItems: "center",
-              justifyContent: "center", gap: 9,
-              boxShadow: loading
-                ? "none"
-                : "0 6px 24px rgba(59,130,246,0.4), inset 0 1px 0 rgba(255,255,255,0.1)",
-              transition: "all 0.2s",
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
-              letterSpacing: "0.2px",
+              display:"flex", alignItems:"center", justifyContent:"center", gap:9,
+              boxShadow: loading ? "none" : "0 6px 24px rgba(59,130,246,0.4), inset 0 1px 0 rgba(255,255,255,0.1)",
+              transition:"all 0.2s",
             }}
-            onMouseEnter={e => {
-              if (!loading) {
-                e.currentTarget.style.transform = "translateY(-1px)";
-                e.currentTarget.style.boxShadow = "0 10px 32px rgba(59,130,246,0.5), inset 0 1px 0 rgba(255,255,255,0.12)";
-              }
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = "none";
-              e.currentTarget.style.boxShadow = "0 6px 24px rgba(59,130,246,0.4), inset 0 1px 0 rgba(255,255,255,0.1)";
-            }}
+            onMouseEnter={e => { if (!loading) { e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 10px 32px rgba(59,130,246,0.5)"; }}}
+            onMouseLeave={e => { e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 6px 24px rgba(59,130,246,0.4), inset 0 1px 0 rgba(255,255,255,0.1)"; }}
           >
             {loading ? (
               <>
                 <span style={{
-                  width: 16, height: 16,
-                  border: "2px solid rgba(255,255,255,0.25)",
-                  borderTopColor: "white", borderRadius: "50%",
-                  display: "inline-block",
-                  animation: "spin 0.7s linear infinite",
+                  width:16, height:16,
+                  border:"2px solid rgba(255,255,255,0.25)",
+                  borderTopColor:"white", borderRadius:"50%",
+                  display:"inline-block", animation:"spin 0.7s linear infinite",
                 }} />
                 Signing in…
               </>
@@ -457,35 +388,32 @@ function LoginPage({ onLogin }) {
         {/* Saved credentials */}
         {remembered && (
           <div style={{
-            marginTop: 14, padding: "10px 14px",
-            background: "rgba(59,130,246,0.07)",
-            border: "1px solid rgba(59,130,246,0.15)",
-            borderRadius: 10,
-            display: "flex", justifyContent: "space-between", alignItems: "center",
+            marginTop:14, padding:"10px 14px",
+            background:"rgba(59,130,246,0.07)",
+            border:"1px solid rgba(59,130,246,0.15)",
+            borderRadius:10,
+            display:"flex", justifyContent:"space-between", alignItems:"center",
           }}>
-            <span style={{ fontSize: 12, color: "rgba(96,165,250,0.85)" }}>✓ Credentials saved</span>
-            <button
-              onClick={() => {
-                localStorage.removeItem("js_remember");
-                setEmail(""); setPassword(""); setRememberMe(false);
-                window.location.reload();
-              }}
-              style={{
-                background: "none", border: "none", cursor: "pointer",
-                fontSize: 12, color: "rgba(255,255,255,0.3)", fontWeight: 600,
-              }}
-            >Forget me</button>
+            <span style={{ fontSize:12, color:"rgba(96,165,250,0.85)" }}>✓ Credentials saved</span>
+            <button onClick={() => {
+              localStorage.removeItem("js_remember");
+              setEmail(""); setPassword(""); setRememberMe(false);
+              window.location.reload();
+            }} style={{
+              background:"none", border:"none", cursor:"pointer",
+              fontSize:12, color:"rgba(255,255,255,0.3)", fontWeight:600,
+            }}>Forget me</button>
           </div>
         )}
 
-        {/* Divider + note */}
+        {/* Admin note */}
         <div style={{
-          marginTop: 28, paddingTop: 22,
-          borderTop: "1px solid rgba(255,255,255,0.05)",
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          marginTop:20, paddingTop:18,
+          borderTop:"1px solid rgba(255,255,255,0.05)",
+          display:"flex", alignItems:"center", justifyContent:"center", gap:6,
         }}>
-          <span style={{ fontSize: 14, opacity: 0.3 }}>🔒</span>
-          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>
+          <span style={{ fontSize:13, opacity:0.3 }}>🔒</span>
+          <span style={{ fontSize:11, color:"rgba(255,255,255,0.2)", textAlign:"center" }}>
             New accounts are created by admins via User Management
           </span>
         </div>
