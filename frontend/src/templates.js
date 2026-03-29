@@ -4,7 +4,7 @@
 
 export const RESUME_TEMPLATES = [
   {
-    id:"t1", name:"Data Analyst", category:"Data", color:"#0d9488", icon:"📊",
+    id:"t1", layout:"modern", name:"Data Analyst", category:"Data", color:"#0d9488", icon:"📊",
     badge:"Most Popular", tags:["SQL", "Python", "Power BI"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -18,7 +18,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t2", name:"Senior Data Analyst", category:"Data", color:"#0369a1", icon:"📈",
+    id:"t2", layout:"executive", name:"Senior Data Analyst", category:"Data", color:"#0369a1", icon:"📈",
     badge:"", tags:["Advanced SQL", "Python", "Tableau"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -32,7 +32,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t3", name:"Data Scientist", category:"Data", color:"#4f46e5", icon:"🔬",
+    id:"t3", layout:"modern", name:"Data Scientist", category:"Data", color:"#4f46e5", icon:"🔬",
     badge:"Trending", tags:["Python", "ML", "Deep Learning"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -46,7 +46,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t4", name:"Business Intelligence Analyst", category:"Data", color:"#0891b2", icon:"💹",
+    id:"t4", layout:"modern", name:"Business Intelligence Analyst", category:"Data", color:"#0891b2", icon:"💹",
     badge:"", tags:["Power BI", "SQL", "DAX"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -60,7 +60,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t5", name:"Data Engineer", category:"Data", color:"#7c3aed", icon:"🔧",
+    id:"t5", layout:"modern", name:"Data Engineer", category:"Data", color:"#7c3aed", icon:"🔧",
     badge:"", tags:["Spark", "Airflow", "dbt"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -74,7 +74,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t6", name:"ML Engineer", category:"AI/ML", color:"#7c3aed", icon:"🤖",
+    id:"t6", layout:"modern", name:"ML Engineer", category:"AI/ML", color:"#7c3aed", icon:"🤖",
     badge:"", tags:["PyTorch", "MLOps", "Kubernetes"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -88,7 +88,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t7", name:"AI Research Scientist", category:"AI/ML", color:"#9333ea", icon:"🧠",
+    id:"t7", layout:"modern", name:"AI Research Scientist", category:"AI/ML", color:"#9333ea", icon:"🧠",
     badge:"", tags:["LLMs", "PyTorch", "Research"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -102,7 +102,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t8", name:"Quantitative Analyst", category:"Finance", color:"#065f46", icon:"📐",
+    id:"t8", layout:"classic", name:"Quantitative Analyst", category:"Finance", color:"#065f46", icon:"📐",
     badge:"", tags:["Python", "Statistics", "Risk"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -116,7 +116,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t9", name:"Analytics Engineer", category:"Data", color:"#0f766e", icon:"⚙️",
+    id:"t9", layout:"modern", name:"Analytics Engineer", category:"Data", color:"#0f766e", icon:"⚙️",
     badge:"", tags:["dbt", "SQL", "Snowflake"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -130,7 +130,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t10", name:"Data Architect", category:"Data", color:"#1e40af", icon:"🏗️",
+    id:"t10", layout:"executive", name:"Data Architect", category:"Data", color:"#1e40af", icon:"🏗️",
     badge:"Senior", tags:["Cloud", "Data Modelling", "Governance"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -144,7 +144,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t11", name:"NLP Engineer", category:"AI/ML", color:"#be185d", icon:"💬",
+    id:"t11", layout:"modern", name:"NLP Engineer", category:"AI/ML", color:"#be185d", icon:"💬",
     badge:"", tags:["NLP", "Python", "Transformers"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -158,7 +158,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t12", name:"Computer Vision Engineer", category:"AI/ML", color:"#dc2626", icon:"👁️",
+    id:"t12", layout:"modern", name:"Computer Vision Engineer", category:"AI/ML", color:"#dc2626", icon:"👁️",
     badge:"", tags:["CV", "YOLO", "PyTorch"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -172,7 +172,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t13", name:"Data Analyst Fresher", category:"Fresher", color:"#0891b2", icon:"🎓",
+    id:"t13", layout:"compact", name:"Data Analyst Fresher", category:"Fresher", color:"#0891b2", icon:"🎓",
     badge:"For Freshers", tags:["SQL", "Python", "Excel"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -186,7 +186,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t14", name:"Research Data Analyst", category:"Data", color:"#0369a1", icon:"🔍",
+    id:"t14", layout:"modern", name:"Research Data Analyst", category:"Data", color:"#0369a1", icon:"🔍",
     badge:"", tags:["R", "SPSS", "Survey Analysis"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -200,7 +200,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t15", name:"Marketing Analytics Manager", category:"Marketing", color:"#9333ea", icon:"📣",
+    id:"t15", layout:"modern", name:"Marketing Analytics Manager", category:"Marketing", color:"#9333ea", icon:"📣",
     badge:"", tags:["Google Analytics", "Attribution", "SQL"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -214,7 +214,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t16", name:"Software Engineer", category:"Engineering", color:"#2563eb", icon:"💻",
+    id:"t16", layout:"modern", name:"Software Engineer", category:"Engineering", color:"#2563eb", icon:"💻",
     badge:"Popular", tags:["React", "Node.js", "AWS"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -228,7 +228,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t17", name:"Frontend Developer", category:"Engineering", color:"#db2777", icon:"🎨",
+    id:"t17", layout:"modern", name:"Frontend Developer", category:"Engineering", color:"#db2777", icon:"🎨",
     badge:"", tags:["React", "TypeScript", "CSS"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -242,7 +242,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t18", name:"Backend Developer", category:"Engineering", color:"#0f766e", icon:"🖥️",
+    id:"t18", layout:"modern", name:"Backend Developer", category:"Engineering", color:"#0f766e", icon:"🖥️",
     badge:"", tags:["Java", "Spring Boot", "Kafka"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -256,7 +256,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t19", name:"Full Stack Developer", category:"Engineering", color:"#0369a1", icon:"🌐",
+    id:"t19", layout:"modern", name:"Full Stack Developer", category:"Engineering", color:"#0369a1", icon:"🌐",
     badge:"", tags:["React", "Node.js", "MongoDB"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -270,7 +270,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t20", name:"DevOps Engineer", category:"Engineering", color:"#059669", icon:"⚙️",
+    id:"t20", layout:"modern", name:"DevOps Engineer", category:"Engineering", color:"#059669", icon:"⚙️",
     badge:"", tags:["Kubernetes", "Terraform", "CI/CD"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -284,7 +284,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t21", name:"Python Developer", category:"Engineering", color:"#0284c7", icon:"🐍",
+    id:"t21", layout:"modern", name:"Python Developer", category:"Engineering", color:"#0284c7", icon:"🐍",
     badge:"", tags:["Python", "FastAPI", "PostgreSQL"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -298,7 +298,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t22", name:"Mobile Developer", category:"Engineering", color:"#be185d", icon:"📱",
+    id:"t22", layout:"modern", name:"Mobile Developer", category:"Engineering", color:"#be185d", icon:"📱",
     badge:"", tags:["React Native", "Flutter", "iOS/Android"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -312,7 +312,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t23", name:"Site Reliability Engineer", category:"Engineering", color:"#0369a1", icon:"🛡️",
+    id:"t23", layout:"modern", name:"Site Reliability Engineer", category:"Engineering", color:"#0369a1", icon:"🛡️",
     badge:"", tags:["SRE", "Observability", "Kubernetes"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -326,7 +326,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t24", name:"Embedded Systems Engineer", category:"Engineering", color:"#1e40af", icon:"🔌",
+    id:"t24", layout:"modern", name:"Embedded Systems Engineer", category:"Engineering", color:"#1e40af", icon:"🔌",
     badge:"", tags:["C", "RTOS", "Firmware"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -340,7 +340,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t25", name:"Blockchain Developer", category:"Engineering", color:"#7c3aed", icon:"⛓️",
+    id:"t25", layout:"modern", name:"Blockchain Developer", category:"Engineering", color:"#7c3aed", icon:"⛓️",
     badge:"", tags:["Solidity", "Web3", "Smart Contracts"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -354,7 +354,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t26", name:"Game Developer", category:"Engineering", color:"#ea580c", icon:"🎮",
+    id:"t26", layout:"modern", name:"Game Developer", category:"Engineering", color:"#ea580c", icon:"🎮",
     badge:"", tags:["Unity", "C#", "Game Design"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -368,7 +368,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t27", name:"Cloud Engineer", category:"Cloud", color:"#d97706", icon:"☁️",
+    id:"t27", layout:"modern", name:"Cloud Engineer", category:"Cloud", color:"#d97706", icon:"☁️",
     badge:"", tags:["AWS", "GCP", "Terraform"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -382,7 +382,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t28", name:"Security Engineer", category:"Security", color:"#dc2626", icon:"🔐",
+    id:"t28", layout:"executive", name:"Security Engineer", category:"Security", color:"#dc2626", icon:"🔐",
     badge:"", tags:["Penetration Testing", "SIEM", "CloudSec"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -396,7 +396,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t29", name:"QA Engineer", category:"Engineering", color:"#0369a1", icon:"🧪",
+    id:"t29", layout:"compact", name:"QA Engineer", category:"Engineering", color:"#0369a1", icon:"🧪",
     badge:"", tags:["Selenium", "pytest", "API Testing"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -410,7 +410,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t30", name:"Software Architect", category:"Engineering", color:"#1e40af", icon:"🏛️",
+    id:"t30", layout:"executive", name:"Software Architect", category:"Engineering", color:"#1e40af", icon:"🏛️",
     badge:"Senior", tags:["Architecture", "Design Patterns", "AWS"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -424,7 +424,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t31", name:"Product Manager", category:"Management", color:"#ea580c", icon:"🎯",
+    id:"t31", layout:"compact", name:"Product Manager", category:"Management", color:"#ea580c", icon:"🎯",
     badge:"", tags:["Roadmap", "Agile", "Metrics"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -438,7 +438,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t32", name:"Senior Product Manager", category:"Management", color:"#c2410c", icon:"🚀",
+    id:"t32", layout:"executive", name:"Senior Product Manager", category:"Management", color:"#c2410c", icon:"🚀",
     badge:"Senior", tags:["0→1 Product", "B2B SaaS", "Growth"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -452,7 +452,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t33", name:"Technical Product Manager", category:"Management", color:"#7c3aed", icon:"⚡",
+    id:"t33", layout:"creative", name:"Technical Product Manager", category:"Management", color:"#7c3aed", icon:"⚡",
     badge:"", tags:["APIs", "Technical Specs", "Agile"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -466,7 +466,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t34", name:"Growth PM", category:"Management", color:"#0891b2", icon:"📊",
+    id:"t34", layout:"minimal", name:"Growth PM", category:"Management", color:"#0891b2", icon:"📊",
     badge:"", tags:["Growth", "Experimentation", "Funnels"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -480,7 +480,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t35", name:"Project Manager", category:"Management", color:"#0369a1", icon:"📋",
+    id:"t35", layout:"executive", name:"Project Manager", category:"Management", color:"#0369a1", icon:"📋",
     badge:"", tags:["PMP", "Agile", "Stakeholders"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -494,7 +494,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t36", name:"UX Designer", category:"Design", color:"#e11d48", icon:"🎭",
+    id:"t36", layout:"creative", name:"UX Designer", category:"Design", color:"#e11d48", icon:"🎭",
     badge:"", tags:["Figma", "User Research", "Prototyping"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -508,7 +508,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t37", name:"Product Designer", category:"Design", color:"#db2777", icon:"✨",
+    id:"t37", layout:"creative", name:"Product Designer", category:"Design", color:"#db2777", icon:"✨",
     badge:"", tags:["Product Design", "Systems", "Mobile"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -522,7 +522,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t38", name:"UI Developer", category:"Design", color:"#0284c7", icon:"🖌️",
+    id:"t38", layout:"creative", name:"UI Developer", category:"Design", color:"#0284c7", icon:"🖌️",
     badge:"", tags:["HTML/CSS", "React", "Design Systems"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -536,7 +536,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t39", name:"Graphic Designer", category:"Design", color:"#7c3aed", icon:"🎨",
+    id:"t39", layout:"creative", name:"Graphic Designer", category:"Design", color:"#7c3aed", icon:"🎨",
     badge:"", tags:["Branding", "Illustrator", "Print"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -550,7 +550,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t40", name:"Motion Designer", category:"Design", color:"#9333ea", icon:"🎬",
+    id:"t40", layout:"creative", name:"Motion Designer", category:"Design", color:"#9333ea", icon:"🎬",
     badge:"", tags:["After Effects", "Cinema 4D", "Animation"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -564,7 +564,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t41", name:"Business Analyst", category:"Business", color:"#0284c7", icon:"📈",
+    id:"t41", layout:"classic", name:"Business Analyst", category:"Business", color:"#0284c7", icon:"📈",
     badge:"", tags:["SQL", "Requirements", "Process"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -578,7 +578,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t42", name:"Management Consultant", category:"Business", color:"#1e40af", icon:"💼",
+    id:"t42", layout:"executive", name:"Management Consultant", category:"Business", color:"#1e40af", icon:"💼",
     badge:"Senior", tags:["Strategy", "M&A", "Operations"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -592,7 +592,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t43", name:"Operations Manager", category:"Business", color:"#065f46", icon:"🏭",
+    id:"t43", layout:"classic", name:"Operations Manager", category:"Business", color:"#065f46", icon:"🏭",
     badge:"", tags:["Operations", "Process", "Six Sigma"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -606,7 +606,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t44", name:"Sales Manager", category:"Business", color:"#dc2626", icon:"🤝",
+    id:"t44", layout:"classic", name:"Sales Manager", category:"Business", color:"#dc2626", icon:"🤝",
     badge:"", tags:["B2B Sales", "CRM", "Revenue"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -620,7 +620,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t45", name:"Finance Manager", category:"Finance", color:"#0369a1", icon:"💰",
+    id:"t45", layout:"classic", name:"Finance Manager", category:"Finance", color:"#0369a1", icon:"💰",
     badge:"", tags:["FP&A", "Excel", "Financial Modelling"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -634,7 +634,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t46", name:"HR Manager", category:"HR", color:"#9333ea", icon:"👥",
+    id:"t46", layout:"minimal", name:"HR Manager", category:"HR", color:"#9333ea", icon:"👥",
     badge:"", tags:["Talent Acquisition", "HRBP", "Culture"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -648,7 +648,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t47", name:"Talent Acquisition Specialist", category:"HR", color:"#7c3aed", icon:"🎯",
+    id:"t47", layout:"minimal", name:"Talent Acquisition Specialist", category:"HR", color:"#7c3aed", icon:"🎯",
     badge:"", tags:["Recruiting", "Sourcing", "ATS"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -662,7 +662,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t48", name:"Digital Marketing Manager", category:"Marketing", color:"#9333ea", icon:"📣",
+    id:"t48", layout:"creative", name:"Digital Marketing Manager", category:"Marketing", color:"#9333ea", icon:"📣",
     badge:"", tags:["SEO", "Google Ads", "Analytics"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -676,7 +676,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t49", name:"Content Marketing Manager", category:"Marketing", color:"#be185d", icon:"✍️",
+    id:"t49", layout:"creative", name:"Content Marketing Manager", category:"Marketing", color:"#be185d", icon:"✍️",
     badge:"", tags:["Content", "SEO", "Brand Voice"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -690,7 +690,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t50", name:"Social Media Manager", category:"Marketing", color:"#e11d48", icon:"📱",
+    id:"t50", layout:"creative", name:"Social Media Manager", category:"Marketing", color:"#e11d48", icon:"📱",
     badge:"", tags:["Instagram", "LinkedIn", "Community"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -704,7 +704,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t51", name:"Software Engineer Fresher", category:"Fresher", color:"#2563eb", icon:"💻",
+    id:"t51", layout:"compact", name:"Software Engineer Fresher", category:"Fresher", color:"#2563eb", icon:"💻",
     badge:"For Freshers", tags:["Python", "Java", "DSA"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -718,7 +718,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t52", name:"Data Analyst Fresher", category:"Fresher", color:"#0891b2", icon:"📊",
+    id:"t52", layout:"compact", name:"Data Analyst Fresher", category:"Fresher", color:"#0891b2", icon:"📊",
     badge:"For Freshers", tags:["SQL", "Python", "Excel"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -732,7 +732,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t53", name:"Frontend Developer Fresher", category:"Fresher", color:"#db2777", icon:"🎨",
+    id:"t53", layout:"compact", name:"Frontend Developer Fresher", category:"Fresher", color:"#db2777", icon:"🎨",
     badge:"For Freshers", tags:["React", "HTML/CSS", "JS"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -746,7 +746,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t54", name:"ML Fresher", category:"Fresher", color:"#7c3aed", icon:"🤖",
+    id:"t54", layout:"compact", name:"ML Fresher", category:"Fresher", color:"#7c3aed", icon:"🤖",
     badge:"For Freshers", tags:["Python", "ML", "Deep Learning"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -760,7 +760,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t55", name:"DevOps Fresher", category:"Fresher", color:"#059669", icon:"⚙️",
+    id:"t55", layout:"compact", name:"DevOps Fresher", category:"Fresher", color:"#059669", icon:"⚙️",
     badge:"For Freshers", tags:["Docker", "Linux", "CI/CD"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -774,7 +774,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t56", name:"Product Analyst", category:"Management", color:"#0369a1", icon:"📊",
+    id:"t56", layout:"minimal", name:"Product Analyst", category:"Management", color:"#0369a1", icon:"📊",
     badge:"", tags:["SQL", "Funnels", "Metrics"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -788,7 +788,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t57", name:"Scrum Master", category:"Management", color:"#0891b2", icon:"🔄",
+    id:"t57", layout:"executive", name:"Scrum Master", category:"Management", color:"#0891b2", icon:"🔄",
     badge:"", tags:["Scrum", "Agile", "Coaching"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -802,7 +802,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t58", name:"Supply Chain Analyst", category:"Business", color:"#065f46", icon:"🚚",
+    id:"t58", layout:"classic", name:"Supply Chain Analyst", category:"Business", color:"#065f46", icon:"🚚",
     badge:"", tags:["Supply Chain", "SQL", "Excel"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -816,7 +816,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t59", name:"Cybersecurity Analyst", category:"Security", color:"#dc2626", icon:"🔐",
+    id:"t59", layout:"classic", name:"Cybersecurity Analyst", category:"Security", color:"#dc2626", icon:"🔐",
     badge:"", tags:["SOC", "SIEM", "Pen Testing"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -830,7 +830,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t60", name:"Technical Writer", category:"Engineering", color:"#0284c7", icon:"📝",
+    id:"t60", layout:"minimal", name:"Technical Writer", category:"Engineering", color:"#0284c7", icon:"📝",
     badge:"", tags:["Documentation", "APIs", "Markdown"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -844,7 +844,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t61", name:"Financial Analyst", category:"Finance", color:"#065f46", icon:"💹",
+    id:"t61", layout:"classic", name:"Financial Analyst", category:"Finance", color:"#065f46", icon:"💹",
     badge:"", tags:["Excel", "DCF", "Financial Modelling"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -858,7 +858,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t62", name:"UI/UX Designer", category:"Design", color:"#9333ea", icon:"🖌️",
+    id:"t62", layout:"creative", name:"UI/UX Designer", category:"Design", color:"#9333ea", icon:"🖌️",
     badge:"", tags:["Figma", "UX Research", "Prototyping"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -872,7 +872,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t63", name:"Cloud Architect", category:"Cloud", color:"#d97706", icon:"☁️",
+    id:"t63", layout:"executive", name:"Cloud Architect", category:"Cloud", color:"#d97706", icon:"☁️",
     badge:"Senior", tags:["AWS", "GCP", "Microservices"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -886,7 +886,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t64", name:"Android Developer", category:"Engineering", color:"#059669", icon:"📱",
+    id:"t64", layout:"modern", name:"Android Developer", category:"Engineering", color:"#059669", icon:"📱",
     badge:"", tags:["Kotlin", "Android", "Jetpack"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -900,7 +900,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t65", name:"iOS Developer", category:"Engineering", color:"#1e40af", icon:"🍎",
+    id:"t65", layout:"modern", name:"iOS Developer", category:"Engineering", color:"#1e40af", icon:"🍎",
     badge:"", tags:["Swift", "SwiftUI", "Xcode"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -914,7 +914,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t66", name:"Technical Support Engineer", category:"Engineering", color:"#0891b2", icon:"🛠️",
+    id:"t66", layout:"modern", name:"Technical Support Engineer", category:"Engineering", color:"#0891b2", icon:"🛠️",
     badge:"", tags:["Troubleshooting", "APIs", "Customer Success"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -928,7 +928,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t67", name:"Solution Architect", category:"Engineering", color:"#1e40af", icon:"🏗️",
+    id:"t67", layout:"executive", name:"Solution Architect", category:"Engineering", color:"#1e40af", icon:"🏗️",
     badge:"", tags:["Pre-Sales", "Solutions", "Enterprise"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -942,7 +942,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t68", name:"Database Administrator", category:"Engineering", color:"#7c3aed", icon:"🗄️",
+    id:"t68", layout:"modern", name:"Database Administrator", category:"Engineering", color:"#7c3aed", icon:"🗄️",
     badge:"", tags:["PostgreSQL", "MySQL", "Performance"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -956,7 +956,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t69", name:"Salesforce Developer", category:"Engineering", color:"#0891b2", icon:"☁️",
+    id:"t69", layout:"modern", name:"Salesforce Developer", category:"Engineering", color:"#0891b2", icon:"☁️",
     badge:"", tags:["Salesforce", "Apex", "LWC"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -970,7 +970,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t70", name:"Network Engineer", category:"Engineering", color:"#0284c7", icon:"🌐",
+    id:"t70", layout:"modern", name:"Network Engineer", category:"Engineering", color:"#0284c7", icon:"🌐",
     badge:"", tags:["Networking", "Cisco", "Security"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -984,7 +984,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t71", name:"BI Developer", category:"Data", color:"#4f46e5", icon:"📊",
+    id:"t71", layout:"modern", name:"BI Developer", category:"Data", color:"#4f46e5", icon:"📊",
     badge:"", tags:["Power BI", "DAX", "SQL"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -998,7 +998,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t72", name:"ServiceNow Developer", category:"Engineering", color:"#059669", icon:"🔧",
+    id:"t72", layout:"modern", name:"ServiceNow Developer", category:"Engineering", color:"#059669", icon:"🔧",
     badge:"", tags:["ServiceNow", "ITSM", "JavaScript"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1012,7 +1012,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t73", name:"SAP Consultant", category:"Business", color:"#d97706", icon:"🏢",
+    id:"t73", layout:"classic", name:"SAP Consultant", category:"Business", color:"#d97706", icon:"🏢",
     badge:"", tags:["SAP", "ABAP", "S/4HANA"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1026,7 +1026,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t74", name:"IT Business Analyst", category:"Business", color:"#0369a1", icon:"💼",
+    id:"t74", layout:"classic", name:"IT Business Analyst", category:"Business", color:"#0369a1", icon:"💼",
     badge:"", tags:["Requirements", "Agile", "BPMN"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1040,7 +1040,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t75", name:"Product Marketing Manager", category:"Marketing", color:"#e11d48", icon:"📢",
+    id:"t75", layout:"creative", name:"Product Marketing Manager", category:"Marketing", color:"#e11d48", icon:"📢",
     badge:"", tags:["Go-to-Market", "Positioning", "Launch"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1054,7 +1054,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t76", name:"Embedded Software Engineer", category:"Engineering", color:"#dc2626", icon:"⚡",
+    id:"t76", layout:"modern", name:"Embedded Software Engineer", category:"Engineering", color:"#dc2626", icon:"⚡",
     badge:"", tags:["C", "Linux", "RTOS"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1068,7 +1068,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t77", name:"Test Automation Engineer", category:"Engineering", color:"#0891b2", icon:"🤖",
+    id:"t77", layout:"modern", name:"Test Automation Engineer", category:"Engineering", color:"#0891b2", icon:"🤖",
     badge:"", tags:["Selenium", "pytest", "API Testing"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1082,7 +1082,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t78", name:"HR Analytics Specialist", category:"HR", color:"#7c3aed", icon:"📊",
+    id:"t78", layout:"minimal", name:"HR Analytics Specialist", category:"HR", color:"#7c3aed", icon:"📊",
     badge:"", tags:["People Analytics", "SQL", "Tableau"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1096,7 +1096,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t79", name:"Logistics Manager", category:"Business", color:"#065f46", icon:"🚛",
+    id:"t79", layout:"classic", name:"Logistics Manager", category:"Business", color:"#065f46", icon:"🚛",
     badge:"", tags:["Logistics", "3PL", "Warehousing"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1110,7 +1110,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t80", name:"Brand Manager", category:"Marketing", color:"#e11d48", icon:"🎯",
+    id:"t80", layout:"creative", name:"Brand Manager", category:"Marketing", color:"#e11d48", icon:"🎯",
     badge:"", tags:["Brand Strategy", "P&L", "Consumer Insights"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1124,7 +1124,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t81", name:"Account Manager", category:"Business", color:"#0369a1", icon:"🤝",
+    id:"t81", layout:"classic", name:"Account Manager", category:"Business", color:"#0369a1", icon:"🤝",
     badge:"", tags:["Account Management", "Upsell", "CRM"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1138,7 +1138,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t82", name:"Customer Success Manager", category:"Business", color:"#059669", icon:"⭐",
+    id:"t82", layout:"classic", name:"Customer Success Manager", category:"Business", color:"#059669", icon:"⭐",
     badge:"", tags:["Customer Success", "Churn", "Onboarding"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1152,7 +1152,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t83", name:"Legal Analyst", category:"Business", color:"#1e40af", icon:"⚖️",
+    id:"t83", layout:"classic", name:"Legal Analyst", category:"Business", color:"#1e40af", icon:"⚖️",
     badge:"", tags:["Contracts", "Legal Research", "Compliance"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1166,7 +1166,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t84", name:"IT Project Manager", category:"Management", color:"#0891b2", icon:"📋",
+    id:"t84", layout:"executive", name:"IT Project Manager", category:"Management", color:"#0891b2", icon:"📋",
     badge:"", tags:["PMP", "Agile", "IT Delivery"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1180,7 +1180,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t85", name:"Procurement Manager", category:"Business", color:"#065f46", icon:"🏪",
+    id:"t85", layout:"classic", name:"Procurement Manager", category:"Business", color:"#065f46", icon:"🏪",
     badge:"", tags:["Procurement", "Negotiation", "Vendor Management"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1194,7 +1194,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t86", name:"Training Manager", category:"HR", color:"#9333ea", icon:"🎓",
+    id:"t86", layout:"minimal", name:"Training Manager", category:"HR", color:"#9333ea", icon:"🎓",
     badge:"", tags:["L&D", "Training Design", "LMS"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1208,7 +1208,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t87", name:"Relationship Manager", category:"Business", color:"#0369a1", icon:"🤝",
+    id:"t87", layout:"classic", name:"Relationship Manager", category:"Business", color:"#0369a1", icon:"🤝",
     badge:"", tags:["Banking", "Portfolio", "Client Advisory"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1222,7 +1222,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t88", name:"Mechanical Engineer", category:"Engineering", color:"#d97706", icon:"⚙️",
+    id:"t88", layout:"minimal", name:"Mechanical Engineer", category:"Engineering", color:"#d97706", icon:"⚙️",
     badge:"", tags:["CAD", "FEA", "Manufacturing"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1236,7 +1236,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t89", name:"Civil Engineer", category:"Engineering", color:"#065f46", icon:"🏗️",
+    id:"t89", layout:"modern", name:"Civil Engineer", category:"Engineering", color:"#065f46", icon:"🏗️",
     badge:"", tags:["AutoCAD", "Structural Design", "Project Management"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1250,7 +1250,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t90", name:"Digital Transformation Consultant", category:"Business", color:"#1e40af", icon:"🔄",
+    id:"t90", layout:"executive", name:"Digital Transformation Consultant", category:"Business", color:"#1e40af", icon:"🔄",
     badge:"Senior", tags:["Change Management", "Digital Strategy", "ERP"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1264,7 +1264,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t91", name:"Actuarial Analyst", category:"Finance", color:"#0369a1", icon:"📐",
+    id:"t91", layout:"classic", name:"Actuarial Analyst", category:"Finance", color:"#0369a1", icon:"📐",
     badge:"", tags:["Actuarial Science", "R", "Risk Modelling"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1278,7 +1278,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t92", name:"Investment Banking Analyst", category:"Finance", color:"#065f46", icon:"🏦",
+    id:"t92", layout:"classic", name:"Investment Banking Analyst", category:"Finance", color:"#065f46", icon:"🏦",
     badge:"", tags:["M&A", "DCF", "Pitch Decks"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1292,7 +1292,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t93", name:"Risk Manager", category:"Finance", color:"#dc2626", icon:"⚠️",
+    id:"t93", layout:"classic", name:"Risk Manager", category:"Finance", color:"#dc2626", icon:"⚠️",
     badge:"", tags:["Risk", "Basel III", "Credit Risk"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1306,7 +1306,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t94", name:"Insurance Specialist", category:"Finance", color:"#0891b2", icon:"🛡️",
+    id:"t94", layout:"classic", name:"Insurance Specialist", category:"Finance", color:"#0891b2", icon:"🛡️",
     badge:"", tags:["Insurance", "Underwriting", "Claims"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1320,7 +1320,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t95", name:"Compliance Officer", category:"Finance", color:"#1e40af", icon:"✅",
+    id:"t95", layout:"classic", name:"Compliance Officer", category:"Finance", color:"#1e40af", icon:"✅",
     badge:"", tags:["Regulatory", "KYC", "AML"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1334,7 +1334,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t96", name:"Pharmacist", category:"Other", color:"#059669", icon:"💊",
+    id:"t96", layout:"minimal", name:"Pharmacist", category:"Other", color:"#059669", icon:"💊",
     badge:"", tags:["Pharmacy", "Clinical", "Drug Information"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1348,7 +1348,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t97", name:"Medical Affairs Manager", category:"Other", color:"#0891b2", icon:"🏥",
+    id:"t97", layout:"minimal", name:"Medical Affairs Manager", category:"Other", color:"#0891b2", icon:"🏥",
     badge:"", tags:["Medical Affairs", "KOL", "Publications"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1362,7 +1362,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t98", name:"ERP Consultant", category:"Business", color:"#d97706", icon:"🔄",
+    id:"t98", layout:"classic", name:"ERP Consultant", category:"Business", color:"#d97706", icon:"🔄",
     badge:"", tags:["SAP", "Oracle", "Implementation"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1376,7 +1376,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t99", name:"E-commerce Manager", category:"Marketing", color:"#e11d48", icon:"🛒",
+    id:"t99", layout:"creative", name:"E-commerce Manager", category:"Marketing", color:"#e11d48", icon:"🛒",
     badge:"", tags:["E-commerce", "Marketplace", "P&L"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1390,7 +1390,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t100", name:"Corporate Trainer", category:"HR", color:"#7c3aed", icon:"🎤",
+    id:"t100", layout:"minimal", name:"Corporate Trainer", category:"HR", color:"#7c3aed", icon:"🎤",
     badge:"", tags:["Training", "Facilitation", "Leadership Development"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1404,7 +1404,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t101", name:"Procurement Analyst", category:"Business", color:"#065f46", icon:"📦",
+    id:"t101", layout:"classic", name:"Procurement Analyst", category:"Business", color:"#065f46", icon:"📦",
     badge:"", tags:["Spend Analysis", "Vendor", "Cost Reduction"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1418,7 +1418,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t102", name:"Change Manager", category:"Management", color:"#1e40af", icon:"🔄",
+    id:"t102", layout:"executive", name:"Change Manager", category:"Management", color:"#1e40af", icon:"🔄",
     badge:"", tags:["ADKAR", "Communication", "Stakeholders"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1432,7 +1432,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t103", name:"Clinical Data Analyst", category:"Data", color:"#0891b2", icon:"🏥",
+    id:"t103", layout:"modern", name:"Clinical Data Analyst", category:"Data", color:"#0891b2", icon:"🏥",
     badge:"", tags:["SAS", "Clinical Trials", "CDISC"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1446,7 +1446,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t104", name:"Growth Hacker", category:"Marketing", color:"#9333ea", icon:"📈",
+    id:"t104", layout:"creative", name:"Growth Hacker", category:"Marketing", color:"#9333ea", icon:"📈",
     badge:"", tags:["Virality", "Experiments", "Funnels"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1460,7 +1460,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t105", name:"Revenue Operations", category:"Business", color:"#0369a1", icon:"💰",
+    id:"t105", layout:"classic", name:"Revenue Operations", category:"Business", color:"#0369a1", icon:"💰",
     badge:"", tags:["RevOps", "Salesforce", "Analytics"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1474,7 +1474,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t106", name:"Agile Coach", category:"Management", color:"#059669", icon:"🏃",
+    id:"t106", layout:"executive", name:"Agile Coach", category:"Management", color:"#059669", icon:"🏃",
     badge:"", tags:["SAFe", "Coaching", "Transformation"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1488,7 +1488,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t107", name:"Information Security Analyst", category:"Security", color:"#dc2626", icon:"🔒",
+    id:"t107", layout:"compact", name:"Information Security Analyst", category:"Security", color:"#dc2626", icon:"🔒",
     badge:"", tags:["ISO 27001", "VAPT", "GRC"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1502,7 +1502,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t108", name:"Automation Engineer", category:"Engineering", color:"#7c3aed", icon:"⚙️",
+    id:"t108", layout:"modern", name:"Automation Engineer", category:"Engineering", color:"#7c3aed", icon:"⚙️",
     badge:"", tags:["RPA", "UiPath", "Process Mining"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1516,7 +1516,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t109", name:"Legal Tech Specialist", category:"Business", color:"#1e40af", icon:"⚖️",
+    id:"t109", layout:"classic", name:"Legal Tech Specialist", category:"Business", color:"#1e40af", icon:"⚖️",
     badge:"", tags:["CLM", "RegTech", "Automation"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1530,7 +1530,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t110", name:"UX Researcher", category:"Design", color:"#e11d48", icon:"🔍",
+    id:"t110", layout:"creative", name:"UX Researcher", category:"Design", color:"#e11d48", icon:"🔍",
     badge:"", tags:["User Research", "Qual/Quant", "Insights"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1544,7 +1544,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t111", name:"Community Manager", category:"Marketing", color:"#be185d", icon:"👥",
+    id:"t111", layout:"creative", name:"Community Manager", category:"Marketing", color:"#be185d", icon:"👥",
     badge:"", tags:["Community", "Discord", "Engagement"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1558,7 +1558,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t112", name:"Technical Recruiter", category:"HR", color:"#9333ea", icon:"🎯",
+    id:"t112", layout:"minimal", name:"Technical Recruiter", category:"HR", color:"#9333ea", icon:"🎯",
     badge:"", tags:["Tech Hiring", "Boolean", "Assessment"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1572,7 +1572,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t113", name:"Sustainability Manager", category:"Business", color:"#065f46", icon:"🌿",
+    id:"t113", layout:"classic", name:"Sustainability Manager", category:"Business", color:"#065f46", icon:"🌿",
     badge:"", tags:["ESG", "Carbon", "Reporting"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1586,7 +1586,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t114", name:"Customer Experience Manager", category:"Business", color:"#0891b2", icon:"⭐",
+    id:"t114", layout:"classic", name:"Customer Experience Manager", category:"Business", color:"#0891b2", icon:"⭐",
     badge:"", tags:["CX", "NPS", "Journey Mapping"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1600,7 +1600,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t115", name:"Healthcare Analyst", category:"Data", color:"#0369a1", icon:"🏥",
+    id:"t115", layout:"modern", name:"Healthcare Analyst", category:"Data", color:"#0369a1", icon:"🏥",
     badge:"", tags:["Healthcare Data", "SQL", "HIPAA"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1614,7 +1614,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t116", name:"EdTech Product Manager", category:"Management", color:"#9333ea", icon:"📚",
+    id:"t116", layout:"executive", name:"EdTech Product Manager", category:"Management", color:"#9333ea", icon:"📚",
     badge:"", tags:["EdTech", "Engagement", "Content"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1628,7 +1628,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t117", name:"FinTech Analyst", category:"Finance", color:"#0284c7", icon:"💳",
+    id:"t117", layout:"modern", name:"FinTech Analyst", category:"Finance", color:"#0284c7", icon:"💳",
     badge:"", tags:["Payments", "Open Banking", "Regulation"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1642,7 +1642,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t118", name:"Retail Analyst", category:"Data", color:"#ea580c", icon:"🛍️",
+    id:"t118", layout:"modern", name:"Retail Analyst", category:"Data", color:"#ea580c", icon:"🛍️",
     badge:"", tags:["Retail Analytics", "Category", "Planogram"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1656,7 +1656,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t119", name:"Sports Analyst", category:"Data", color:"#059669", icon:"⚽",
+    id:"t119", layout:"modern", name:"Sports Analyst", category:"Data", color:"#059669", icon:"⚽",
     badge:"", tags:["Sports Analytics", "Python", "StatsBomb"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1670,7 +1670,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t120", name:"Geospatial Analyst", category:"Data", color:"#0891b2", icon:"🗺️",
+    id:"t120", layout:"modern", name:"Geospatial Analyst", category:"Data", color:"#0891b2", icon:"🗺️",
     badge:"", tags:["GIS", "QGIS", "Spatial Data"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1684,7 +1684,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t121", name:"IoT Engineer", category:"Engineering", color:"#d97706", icon:"📡",
+    id:"t121", layout:"modern", name:"IoT Engineer", category:"Engineering", color:"#d97706", icon:"📡",
     badge:"", tags:["MQTT", "IoT", "Edge Computing"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1698,7 +1698,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t122", name:"AR/VR Developer", category:"Engineering", color:"#7c3aed", icon:"🥽",
+    id:"t122", layout:"modern", name:"AR/VR Developer", category:"Engineering", color:"#7c3aed", icon:"🥽",
     badge:"", tags:["Unity", "ARKit", "XR"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1712,7 +1712,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t123", name:"Robotics Engineer", category:"Engineering", color:"#1e40af", icon:"🤖",
+    id:"t123", layout:"modern", name:"Robotics Engineer", category:"Engineering", color:"#1e40af", icon:"🤖",
     badge:"", tags:["ROS", "Python", "Control Systems"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1726,7 +1726,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t124", name:"Bioinformatics Analyst", category:"Data", color:"#0369a1", icon:"🧬",
+    id:"t124", layout:"modern", name:"Bioinformatics Analyst", category:"Data", color:"#0369a1", icon:"🧬",
     badge:"", tags:["Genomics", "Python", "R"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1740,7 +1740,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t125", name:"Renewable Energy Analyst", category:"Business", color:"#065f46", icon:"⚡",
+    id:"t125", layout:"classic", name:"Renewable Energy Analyst", category:"Business", color:"#065f46", icon:"⚡",
     badge:"", tags:["Solar", "Energy Analytics", "GIS"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1754,7 +1754,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t126", name:"Real Estate Analyst", category:"Finance", color:"#d97706", icon:"🏢",
+    id:"t126", layout:"classic", name:"Real Estate Analyst", category:"Finance", color:"#d97706", icon:"🏢",
     badge:"", tags:["Valuation", "DCF", "CRE"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1768,7 +1768,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t127", name:"E-learning Designer", category:"HR", color:"#9333ea", icon:"🎓",
+    id:"t127", layout:"minimal", name:"E-learning Designer", category:"HR", color:"#9333ea", icon:"🎓",
     badge:"", tags:["Articulate", "SCORM", "Instructional Design"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1782,7 +1782,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t128", name:"Talent Development Manager", category:"HR", color:"#7c3aed", icon:"📈",
+    id:"t128", layout:"minimal", name:"Talent Development Manager", category:"HR", color:"#7c3aed", icon:"📈",
     badge:"", tags:["Leadership Dev", "Succession", "Coaching"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1796,7 +1796,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t129", name:"Internal Auditor", category:"Finance", color:"#1e40af", icon:"✅",
+    id:"t129", layout:"classic", name:"Internal Auditor", category:"Finance", color:"#1e40af", icon:"✅",
     badge:"", tags:["Risk-Based Audit", "Controls", "SOX"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1810,7 +1810,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t130", name:"Treasury Analyst", category:"Finance", color:"#065f46", icon:"🏦",
+    id:"t130", layout:"classic", name:"Treasury Analyst", category:"Finance", color:"#065f46", icon:"🏦",
     badge:"", tags:["Cash Management", "FX", "Derivatives"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1824,7 +1824,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t131", name:"Retail Banking Relationship Manager", category:"Finance", color:"#0891b2", icon:"🤝",
+    id:"t131", layout:"classic", name:"Retail Banking Relationship Manager", category:"Finance", color:"#0891b2", icon:"🤝",
     badge:"", tags:["Banking", "SME", "Lending"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1838,7 +1838,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t132", name:"Insurance Underwriter", category:"Finance", color:"#0284c7", icon:"📋",
+    id:"t132", layout:"classic", name:"Insurance Underwriter", category:"Finance", color:"#0284c7", icon:"📋",
     badge:"", tags:["Risk Assessment", "Underwriting", "Commercial"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1852,7 +1852,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t133", name:"Vendor Manager", category:"Business", color:"#ea580c", icon:"🤝",
+    id:"t133", layout:"classic", name:"Vendor Manager", category:"Business", color:"#ea580c", icon:"🤝",
     badge:"", tags:["Vendor Management", "SLAs", "Contracts"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1866,7 +1866,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t134", name:"IT Auditor", category:"Business", color:"#1e40af", icon:"🔍",
+    id:"t134", layout:"classic", name:"IT Auditor", category:"Business", color:"#1e40af", icon:"🔍",
     badge:"", tags:["CISA", "IT Controls", "Risk"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1880,7 +1880,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t135", name:"Environmental Analyst", category:"Business", color:"#065f46", icon:"🌍",
+    id:"t135", layout:"classic", name:"Environmental Analyst", category:"Business", color:"#065f46", icon:"🌍",
     badge:"", tags:["EHS", "Compliance", "Carbon Footprint"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1894,7 +1894,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t136", name:"Academic Researcher", category:"Other", color:"#9333ea", icon:"🔬",
+    id:"t136", layout:"minimal", name:"Academic Researcher", category:"Other", color:"#9333ea", icon:"🔬",
     badge:"", tags:["Research Methods", "Publication", "Grant Writing"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1908,7 +1908,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t137", name:"Journalist/Content Writer", category:"Marketing", color:"#be185d", icon:"✍️",
+    id:"t137", layout:"creative", name:"Journalist/Content Writer", category:"Marketing", color:"#be185d", icon:"✍️",
     badge:"", tags:["Writing", "Research", "Storytelling"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1922,7 +1922,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t138", name:"Event Manager", category:"Marketing", color:"#e11d48", icon:"🎪",
+    id:"t138", layout:"creative", name:"Event Manager", category:"Marketing", color:"#e11d48", icon:"🎪",
     badge:"", tags:["Events", "Logistics", "Vendor Management"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1936,7 +1936,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t139", name:"PR Manager", category:"Marketing", color:"#9333ea", icon:"📰",
+    id:"t139", layout:"creative", name:"PR Manager", category:"Marketing", color:"#9333ea", icon:"📰",
     badge:"", tags:["Media Relations", "Crisis Comms", "Brand PR"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1950,7 +1950,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t140", name:"Video Producer", category:"Design", color:"#dc2626", icon:"🎬",
+    id:"t140", layout:"creative", name:"Video Producer", category:"Design", color:"#dc2626", icon:"🎬",
     badge:"", tags:["Video Production", "Editing", "YouTube"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1964,7 +1964,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t141", name:"Podcast Producer", category:"Marketing", color:"#7c3aed", icon:"🎙️",
+    id:"t141", layout:"creative", name:"Podcast Producer", category:"Marketing", color:"#7c3aed", icon:"🎙️",
     badge:"", tags:["Audio Production", "Content", "Distribution"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1978,7 +1978,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t142", name:"Photojournalist", category:"Design", color:"#ea580c", icon:"📸",
+    id:"t142", layout:"creative", name:"Photojournalist", category:"Design", color:"#ea580c", icon:"📸",
     badge:"", tags:["Photography", "Visual Storytelling", "Editing"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -1992,7 +1992,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t143", name:"Interior Designer", category:"Design", color:"#be185d", icon:"🏠",
+    id:"t143", layout:"creative", name:"Interior Designer", category:"Design", color:"#be185d", icon:"🏠",
     badge:"", tags:["AutoCAD", "Space Planning", "3D Rendering"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -2006,7 +2006,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t144", name:"Fashion Designer", category:"Design", color:"#e11d48", icon:"👗",
+    id:"t144", layout:"creative", name:"Fashion Designer", category:"Design", color:"#e11d48", icon:"👗",
     badge:"", tags:["Textile", "Pattern Making", "Fashion Tech"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -2020,7 +2020,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t145", name:"Industrial Designer", category:"Design", color:"#d97706", icon:"🏭",
+    id:"t145", layout:"creative", name:"Industrial Designer", category:"Design", color:"#d97706", icon:"🏭",
     badge:"", tags:["Product Design", "CAD", "Manufacturing"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -2034,7 +2034,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t146", name:"Architect", category:"Engineering", color:"#0284c7", icon:"🏛️",
+    id:"t146", layout:"modern", name:"Architect", category:"Engineering", color:"#0284c7", icon:"🏛️",
     badge:"", tags:["AutoCAD", "Revit", "BIM"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -2048,7 +2048,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t147", name:"Urban Planner", category:"Business", color:"#065f46", icon:"🏙️",
+    id:"t147", layout:"classic", name:"Urban Planner", category:"Business", color:"#065f46", icon:"🏙️",
     badge:"", tags:["GIS", "Land Use", "Policy"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -2062,7 +2062,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t148", name:"Aviation Analyst", category:"Business", color:"#0369a1", icon:"✈️",
+    id:"t148", layout:"classic", name:"Aviation Analyst", category:"Business", color:"#0369a1", icon:"✈️",
     badge:"", tags:["Aviation", "Revenue Management", "OTP"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -2076,7 +2076,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t149", name:"Sports Manager", category:"Business", color:"#059669", icon:"🏆",
+    id:"t149", layout:"classic", name:"Sports Manager", category:"Business", color:"#059669", icon:"🏆",
     badge:"", tags:["Sports Business", "Sponsorship", "Events"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},
@@ -2090,7 +2090,7 @@ export const RESUME_TEMPLATES = [
     }
   },
   {
-    id:"t150", name:"Startup Founder", category:"Management", color:"#dc2626", icon:"🚀",
+    id:"t150", layout:"executive", name:"Startup Founder", category:"Management", color:"#dc2626", icon:"🚀",
     badge:"Trending", tags:["Entrepreneurship", "Fundraising", "0→1"],
     resume:{
       personal:{name:"Your Name",email:"you@email.com",phone:"+91 98765 43210",location:"Bangalore, India",linkedin:"linkedin.com/in/yourname",portfolio:""},

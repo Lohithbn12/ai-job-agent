@@ -1,9 +1,16 @@
-/* ─── Modern Reset + Base ───────────────────────────────── */
+/* ─── Modern Reset + Base ───────────────────────────────────────
+   index.css — only resets and base body styles live here.
+   All component styles are in App.css or GLOBAL_CSS (constants.js).
+   ─────────────────────────────────────────────────────────────── */
 
-* {
+*, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -11,46 +18,35 @@ body {
   background: #020617;
   color: rgba(255, 255, 255, 0.88);
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
-/* ─── Scrollbar ─────────────────────────────────────────── */
-
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+input, button, textarea, select {
+  font-family: inherit;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+input:focus, textarea:focus, select:focus {
+  outline: none;
 }
 
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────── */
+
+::-webkit-scrollbar       { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(59, 130, 246, 0.25);
-  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(59, 130, 246, 0.5);
+  background: rgba(59, 130, 246, 0.4);
 }
 
-/* ─── Smooth Animations ─────────────────────────────────── */
-
-.fade-up {
-  animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ─── Selection color ───────────────────────────────────── */
+/* ─── Selection color ───────────────────────────────────────── */
 
 ::selection {
   background: rgba(59, 130, 246, 0.3);

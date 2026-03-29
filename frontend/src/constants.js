@@ -69,10 +69,10 @@ export const GLOBAL_CSS = `
     --border2:rgba(255,255,255,.1);
 
     /* Brand accent — blue */
-    --teal:      #3b82f6;
-    --teal-dim:  #1d4ed8;
-    --teal-glow: rgba(59,130,246,.15);
-    --teal-soft: rgba(59,130,246,.08);
+    --teal:      #0d9488;
+    --teal-dim:  #0f766e;
+    --teal-glow: rgba(13,148,136,.15);
+    --teal-soft: rgba(13,148,136,.08);
     --blue:      #3b82f6;
     --blue-dim:  #1d4ed8;
 
@@ -182,7 +182,7 @@ export const GLOBAL_CSS = `
     transition:all .15s;
   }
   .inp::placeholder { color:rgba(255,255,255,.2); }
-  .inp:focus { border-color:rgba(59,130,246,.6); box-shadow:0 0 0 3px rgba(59,130,246,.12); }
+  .inp:focus { border-color:rgba(13,148,136,.6); box-shadow:0 0 0 3px rgba(13,148,136,.12); }
 
   .inp-plain {
     width:100%; padding:10px 13px;
@@ -191,7 +191,7 @@ export const GLOBAL_CSS = `
     transition:all .15s;
   }
   .inp-plain::placeholder { color:rgba(255,255,255,.2); }
-  .inp-plain:focus { border-color:rgba(59,130,246,.6); box-shadow:0 0 0 3px rgba(59,130,246,.12); }
+  .inp-plain:focus { border-color:rgba(13,148,136,.6); box-shadow:0 0 0 3px rgba(13,148,136,.12); }
 
   .textarea-plain {
     width:100%; padding:10px 13px;
@@ -200,13 +200,13 @@ export const GLOBAL_CSS = `
     resize:vertical; line-height:1.65; transition:all .15s;
   }
   .textarea-plain::placeholder { color:rgba(255,255,255,.2); }
-  .textarea-plain:focus { border-color:rgba(59,130,246,.6); box-shadow:0 0 0 3px rgba(59,130,246,.12); }
+  .textarea-plain:focus { border-color:rgba(13,148,136,.6); box-shadow:0 0 0 3px rgba(13,148,136,.12); }
 
   /* old classes kept for compat */
   .dark-input  { width:100%; padding:10px 13px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:var(--r2); font-size:13px; color:var(--text); min-width:0; transition:all .15s; }
-  .dark-input:focus  { border-color:rgba(59,130,246,.6); box-shadow:0 0 0 3px rgba(59,130,246,.12); }
+  .dark-input:focus  { border-color:rgba(13,148,136,.6); box-shadow:0 0 0 3px rgba(13,148,136,.12); }
   .dark-textarea { width:100%; padding:10px 13px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:var(--r2); font-size:13px; color:var(--text); resize:vertical; line-height:1.65; transition:all .15s; }
-  .dark-textarea:focus { border-color:rgba(59,130,246,.6); box-shadow:0 0 0 3px rgba(59,130,246,.12); }
+  .dark-textarea:focus { border-color:rgba(13,148,136,.6); box-shadow:0 0 0 3px rgba(13,148,136,.12); }
   .section-card { background:#0a1628; border:1px solid rgba(255,255,255,.07); border-radius:var(--r); padding:22px; box-shadow:0 2px 12px rgba(0,0,0,.3); }
 
   /* ── Buttons ── */

@@ -11,6 +11,7 @@ import axios from "axios";
 import { API, EMPTY_RESUME, Spinner, Label, Tag, FilterChip, 
          MetaRow, AddRow, Section } from "./constants";
 import { RESUME_TEMPLATES, TEMPLATE_CATEGORIES } from "./templates";
+import ResumePreview, { LAYOUT_META } from "./ResumeLayouts";
 
 function ATSScoreRing({ score }) {
   const r = 45;
@@ -94,470 +95,6 @@ function ATSSuggestions({ atsResult, localScore }) {
           </div>
         );
       })}
-    </div>
-  );
-}
-
-// ─── Resume PDF-like Preview ──────────────────────────────────────────────────
-
-// ─── VISUAL STYLES ────────────────────────────────────────────────────────────
-// 8 resume visual styles: 2 with photo (top-left), 6 without photo.
-// Styles are independent of job role — user picks a look they like.
-
-const VISUAL_STYLES = [
-  // ── WITH PHOTO (top-left) ────────────────────────────────────────────────
-  {
-    id:"vs1", name:"Navy Photo", hasPhoto:true, badge:"With Photo", icon:"🔵",
-    desc:"Dark navy header with top-left photo. Classic & authoritative.",
-    accent:"#1e3a8a", headerBg:"#1e3a8a", headerText:"#fff",
-    headingColor:"#1e3a8a", bodyBg:"#fff", textColor:"#1e293b", borderColor:"#1e3a8a",
-  },
-  {
-    id:"vs2", name:"Teal Photo", hasPhoto:true, badge:"With Photo", icon:"🟢",
-    desc:"Teal header with top-left photo. Modern and distinctive.",
-    accent:"#0d9488", headerBg:"#0d9488", headerText:"#fff",
-    headingColor:"#0d9488", bodyBg:"#fff", textColor:"#1e293b", borderColor:"#0d9488",
-  },
-  // ── WITHOUT PHOTO ────────────────────────────────────────────────────────
-  {
-    id:"vs3", name:"Classic Blue", hasPhoto:false, badge:"", icon:"⚪",
-    desc:"Black & white with blue accents. Timeless ATS-friendly.",
-    accent:"#1e40af", headerBg:null, headerText:null,
-    headingColor:"#1e3a5f", bodyBg:"#fff", textColor:"#374151", borderColor:"#1e40af",
-  },
-  {
-    id:"vs4", name:"Bold Purple", hasPhoto:false, badge:"Popular", icon:"🟣",
-    desc:"Strong purple header bar. Bold and attention-grabbing.",
-    accent:"#7c3aed", headerBg:"#7c3aed", headerText:"#fff",
-    headingColor:"#7c3aed", bodyBg:"#fff", textColor:"#1e293b", borderColor:"#7c3aed",
-  },
-  {
-    id:"vs5", name:"Minimal Slate", hasPhoto:false, badge:"", icon:"🌫️",
-    desc:"Maximum white space, subtle grey lines. Ultra-clean.",
-    accent:"#475569", headerBg:null, headerText:null,
-    headingColor:"#0f172a", bodyBg:"#fff", textColor:"#334155", borderColor:"#cbd5e1",
-  },
-  {
-    id:"vs6", name:"Rose Modern", hasPhoto:false, badge:"Trending", icon:"🌸",
-    desc:"Warm rose-pink header. Stands out while staying professional.",
-    accent:"#be185d", headerBg:"#be185d", headerText:"#fff",
-    headingColor:"#be185d", bodyBg:"#fff", textColor:"#1e293b", borderColor:"#be185d",
-  },
-  {
-    id:"vs7", name:"Forest Green", hasPhoto:false, badge:"", icon:"🌿",
-    desc:"Deep green with clean horizontal lines. Business & consulting.",
-    accent:"#065f46", headerBg:null, headerText:null,
-    headingColor:"#064e3b", bodyBg:"#fff", textColor:"#1e293b", borderColor:"#065f46",
-  },
-  {
-    id:"vs8", name:"Sunset Orange", hasPhoto:false, badge:"", icon:"🟠",
-    desc:"Deep orange header. Energetic and memorable.",
-    accent:"#c2410c", headerBg:"#c2410c", headerText:"#fff",
-    headingColor:"#c2410c", bodyBg:"#fff", textColor:"#1e293b", borderColor:"#c2410c",
-  },
-];
-
-// ─── Style Picker ─────────────────────────────────────────────────────────────
-function StylePicker({ activeId, onChange }) {
-  return (
-    <div style={{ marginBottom:16 }}>
-      <div style={{ fontSize:11, fontWeight:700, color:"#475569", textTransform:"uppercase",
-        letterSpacing:"1px", marginBottom:10 }}>Resume Style</div>
-      <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-        {VISUAL_STYLES.map(s => (
-          <button key={s.id} onClick={() => onChange(s.id)}
-            title={s.desc}
-            style={{
-              display:"flex", alignItems:"center", gap:6,
-              padding:"6px 12px",
-              background: activeId===s.id ? s.accent+"18" : "white",
-              border:`1.5px solid ${activeId===s.id ? s.accent : "rgba(0,0,0,.1)"}`,
-              borderRadius:20, cursor:"pointer", fontSize:12, fontWeight:600,
-              color: activeId===s.id ? s.accent : "#475569",
-              transition:"all .15s",
-            }}>
-            <span>{s.icon}</span>
-            <span>{s.name}</span>
-            {s.badge && (
-              <span style={{ padding:"1px 6px", background:s.accent, color:"white",
-                borderRadius:10, fontSize:9, fontWeight:700 }}>{s.badge}</span>
-            )}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Shared resume section heading ────────────────────────────────────────────
-function SectionHead({ label, color, border }) {
-  return (
-    <div style={{ fontSize:9.5, fontWeight:700, color, textTransform:"uppercase",
-      letterSpacing:"1px", marginBottom:5, paddingBottom:3,
-      borderBottom:`1.5px solid ${(border||color)+"33"}` }}>
-      {label}
-    </div>
-  );
-}
-
-// ─── Shared experience blocks ─────────────────────────────────────────────────
-function ExpBlocks({ experience, color }) {
-  return experience.map((exp, i) => (
-    <div key={i} style={{ marginBottom:10 }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline" }}>
-        <div style={{ fontWeight:700, fontSize:11.5 }}>{exp.title}</div>
-        <div style={{ fontSize:10, color:"#6b7280" }}>{exp.start} – {exp.end||"Present"}</div>
-      </div>
-      <div style={{ color:"#374151", fontStyle:"italic", marginBottom:4 }}>
-        {exp.company}{exp.location ? ` · ${exp.location}` : ""}
-      </div>
-      {(exp.bullets||[]).filter(Boolean).map((b,j) => (
-        <div key={j} style={{ display:"flex", gap:6, marginBottom:2 }}>
-          <span style={{ color, flexShrink:0 }}>•</span>
-          <span style={{ color:"#374151" }}>{b}</span>
-        </div>
-      ))}
-    </div>
-  ));
-}
-
-// ─── Shared education blocks ──────────────────────────────────────────────────
-function EduBlocks({ education }) {
-  return education.map((edu, i) => (
-    <div key={i} style={{ marginBottom:6 }}>
-      <div style={{ display:"flex", justifyContent:"space-between" }}>
-        <div style={{ fontWeight:700 }}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</div>
-        <div style={{ fontSize:10, color:"#6b7280" }}>{edu.year}</div>
-      </div>
-      <div style={{ color:"#374151" }}>{edu.school}{edu.gpa ? ` · GPA: ${edu.gpa}` : ""}</div>
-    </div>
-  ));
-}
-
-// ─── ResumePreview — dispatches to correct style renderer ────────────────────
-function ResumePreview({ resume, styleId }) {
-  const p   = resume.personal;
-  const hasContent = p.name || resume.summary || resume.experience.length || resume.education.length;
-
-  if (!hasContent) return (
-    <div style={{ textAlign:"center", padding:"60px 20px", color:"#475569" }}>
-      <div style={{ fontSize:40, marginBottom:12 }}>📄</div>
-      <div style={{ fontSize:14, fontWeight:600 }}>Preview will appear here</div>
-      <div style={{ fontSize:12, marginTop:6 }}>Fill in your details to see your resume</div>
-    </div>
-  );
-
-  const style = VISUAL_STYLES.find(s => s.id === (styleId||"vs3")) || VISUAL_STYLES[2];
-
-  // Route to correct renderer
-  if (style.hasPhoto)      return <PhotoTopLeftResume  resume={resume} s={style} />;
-  if (style.headerBg)      return <BoldHeaderResume    resume={resume} s={style} />;
-  return                          <ClassicResume        resume={resume} s={style} />;
-}
-
-// ─── Style 1 & 2: Photo top-left + colored header ────────────────────────────
-function PhotoTopLeftResume({ resume, s }) {
-  const p   = resume.personal;
-  const sk  = resume.skills || { technical:[], tools:[], soft:[] };
-  const cer = resume.certifications || [];
-  const allSkills = [...(sk.technical||[]), ...(sk.tools||[])];
-
-  return (
-    <div style={{ fontFamily:"'Arial',sans-serif", fontSize:11, lineHeight:1.55,
-      color:s.textColor, background:s.bodyBg, minHeight:600 }}>
-
-      {/* ── Colored header with photo top-left ── */}
-      <div style={{ background:s.headerBg, color:s.headerText, padding:"20px 28px",
-        display:"flex", alignItems:"center", gap:20 }}>
-
-        {/* Photo placeholder — top left */}
-        <div style={{ width:72, height:72, borderRadius:10, flexShrink:0,
-          background:"rgba(255,255,255,0.2)",
-          border:"2px solid rgba(255,255,255,0.5)",
-          display:"flex", alignItems:"center", justifyContent:"center",
-          fontSize:26, overflow:"hidden" }}>
-          {resume.personal?.photoUrl
-            ? <img src={resume.personal.photoUrl} alt="photo"
-                style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-            : "👤"}
-        </div>
-
-        {/* Name + contact */}
-        <div style={{ flex:1 }}>
-          <div style={{ fontSize:20, fontWeight:800, letterSpacing:"-.3px", marginBottom:5 }}>
-            {p.name || "Your Name"}
-          </div>
-          <div style={{ fontSize:10, display:"flex", flexWrap:"wrap", gap:"0 14px", opacity:.9 }}>
-            {p.email    && <span>✉ {p.email}</span>}
-            {p.phone    && <span>📞 {p.phone}</span>}
-            {p.location && <span>📍 {p.location}</span>}
-            {p.linkedin && <span>🔗 {p.linkedin}</span>}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Body ── */}
-      <div style={{ padding:"22px 28px" }}>
-
-        {resume.summary && (
-          <div style={{ marginBottom:12 }}>
-            <SectionHead label="Professional Summary" color={s.headingColor} border={s.borderColor} />
-            <div style={{ color:s.textColor, lineHeight:1.65 }}>{resume.summary}</div>
-          </div>
-        )}
-
-        {resume.experience.length > 0 && (
-          <div style={{ marginBottom:12 }}>
-            <SectionHead label="Work Experience" color={s.headingColor} border={s.borderColor} />
-            <ExpBlocks experience={resume.experience} color={s.headingColor} />
-          </div>
-        )}
-
-        {resume.education.length > 0 && (
-          <div style={{ marginBottom:12 }}>
-            <SectionHead label="Education" color={s.headingColor} border={s.borderColor} />
-            <EduBlocks education={resume.education} />
-          </div>
-        )}
-
-        {allSkills.length > 0 && (
-          <div style={{ marginBottom:12 }}>
-            <SectionHead label="Skills" color={s.headingColor} border={s.borderColor} />
-            <div style={{ display:"flex", flexWrap:"wrap", gap:"4px 8px" }}>
-              {allSkills.slice(0,18).map((sk2,i) => (
-                <span key={i} style={{ padding:"2px 9px",
-                  background:s.headingColor+"15", border:`1px solid ${s.headingColor}30`,
-                  borderRadius:4, fontSize:10, color:s.headingColor, fontWeight:600 }}>
-                  {sk2}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {resume.projects?.length > 0 && (
-          <div style={{ marginBottom:12 }}>
-            <SectionHead label="Projects" color={s.headingColor} border={s.borderColor} />
-            {resume.projects.map((pr,i) => (
-              <div key={i} style={{ marginBottom:7 }}>
-                <div style={{ fontWeight:700 }}>{pr.name}</div>
-                {pr.stack && <div style={{ fontSize:10, color:s.headingColor, marginBottom:2 }}>{pr.stack}</div>}
-                {pr.description && <div style={{ color:s.textColor }}>{pr.description}</div>}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {cer.length > 0 && (
-          <div>
-            <SectionHead label="Certifications" color={s.headingColor} border={s.borderColor} />
-            {cer.map((c,i) => (
-              <div key={i} style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-                <span>{c.name||c}</span>
-                <span style={{ color:"#6b7280", fontSize:10 }}>
-                  {c.issuer ? `${c.issuer}${c.year ? ` · ${c.year}` : ""}` : ""}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Styles 4, 6, 8: Bold full-width colored header (no photo) ───────────────
-function BoldHeaderResume({ resume, s }) {
-  const p   = resume.personal;
-  const sk  = resume.skills || { technical:[], tools:[], soft:[] };
-  const cer = resume.certifications || [];
-  const allSkills = [...(sk.technical||[]), ...(sk.tools||[]), ...(sk.soft||[])];
-
-  return (
-    <div style={{ fontFamily:"'Arial',sans-serif", fontSize:11, lineHeight:1.55,
-      color:s.textColor, background:s.bodyBg, minHeight:600 }}>
-
-      {/* Bold color header */}
-      <div style={{ background:s.headerBg, color:s.headerText, padding:"22px 32px 20px" }}>
-        <div style={{ fontSize:22, fontWeight:800, letterSpacing:"-.3px" }}>
-          {p.name || "Your Name"}
-        </div>
-        <div style={{ fontSize:10, marginTop:7, display:"flex", flexWrap:"wrap",
-          gap:"0 16px", opacity:.9 }}>
-          {p.email    && <span>✉ {p.email}</span>}
-          {p.phone    && <span>📞 {p.phone}</span>}
-          {p.location && <span>📍 {p.location}</span>}
-          {p.linkedin && <span>🔗 {p.linkedin}</span>}
-          {p.portfolio && <span>🌐 {p.portfolio}</span>}
-        </div>
-      </div>
-
-      <div style={{ padding:"22px 32px" }}>
-
-        {resume.summary && (
-          <div style={{ marginBottom:12 }}>
-            <SectionHead label="Professional Summary" color={s.headingColor} border={s.borderColor} />
-            <div style={{ lineHeight:1.65 }}>{resume.summary}</div>
-          </div>
-        )}
-
-        {resume.experience.length > 0 && (
-          <div style={{ marginBottom:12 }}>
-            <SectionHead label="Work Experience" color={s.headingColor} border={s.borderColor} />
-            <ExpBlocks experience={resume.experience} color={s.headingColor} />
-          </div>
-        )}
-
-        {resume.education.length > 0 && (
-          <div style={{ marginBottom:12 }}>
-            <SectionHead label="Education" color={s.headingColor} border={s.borderColor} />
-            <EduBlocks education={resume.education} />
-          </div>
-        )}
-
-        {allSkills.length > 0 && (
-          <div style={{ marginBottom:12 }}>
-            <SectionHead label="Skills" color={s.headingColor} border={s.borderColor} />
-            <div style={{ display:"flex", flexWrap:"wrap", gap:"4px 8px" }}>
-              {allSkills.slice(0,18).map((sk2,i) => (
-                <span key={i} style={{ padding:"2px 9px",
-                  background:s.headingColor+"15", border:`1px solid ${s.headingColor}25`,
-                  borderRadius:4, fontSize:10, color:s.headingColor, fontWeight:600 }}>
-                  {sk2}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {resume.projects?.length > 0 && (
-          <div style={{ marginBottom:12 }}>
-            <SectionHead label="Projects" color={s.headingColor} border={s.borderColor} />
-            {resume.projects.map((pr,i) => (
-              <div key={i} style={{ marginBottom:7 }}>
-                <div style={{ fontWeight:700 }}>{pr.name}</div>
-                {pr.stack && <div style={{ fontSize:10, color:s.headingColor, marginBottom:2 }}>{pr.stack}</div>}
-                {pr.description && <div style={{ color:s.textColor }}>{pr.description}</div>}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {cer.length > 0 && (
-          <div>
-            <SectionHead label="Certifications" color={s.headingColor} border={s.borderColor} />
-            {cer.map((c,i) => (
-              <div key={i} style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-                <span>{c.name||c}</span>
-                <span style={{ color:"#6b7280", fontSize:10 }}>
-                  {c.issuer ? `${c.issuer}${c.year ? ` · ${c.year}` : ""}` : ""}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {resume.languages?.length > 0 && (
-          <div>
-            <SectionHead label="Languages" color={s.headingColor} border={s.borderColor} />
-            <div>{resume.languages.map(l => `${l.lang} (${l.level})`).join(" · ")}</div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Styles 3, 5, 7: Classic / Minimal (no colored header, no photo) ─────────
-function ClassicResume({ resume, s }) {
-  const p   = resume.personal;
-  const sk  = resume.skills || { technical:[], tools:[], soft:[] };
-  const cer = resume.certifications || [];
-
-  return (
-    <div style={{ fontFamily:"'Arial',sans-serif", fontSize:11, lineHeight:1.55,
-      color:s.textColor, background:s.bodyBg, padding:"32px 36px", minHeight:600 }}>
-
-      {/* Classic text header */}
-      <div style={{ borderBottom:`2px solid ${s.borderColor}`, paddingBottom:14, marginBottom:14 }}>
-        <div style={{ fontSize:22, fontWeight:700, color:s.headingColor, letterSpacing:"-.3px" }}>
-          {p.name || "Your Name"}
-        </div>
-        <div style={{ fontSize:10, color:"#475569", marginTop:4, display:"flex",
-          flexWrap:"wrap", gap:"0 14px" }}>
-          {p.email    && <span>✉ {p.email}</span>}
-          {p.phone    && <span>📞 {p.phone}</span>}
-          {p.location && <span>📍 {p.location}</span>}
-          {p.linkedin && <span>🔗 {p.linkedin}</span>}
-          {p.portfolio && <span>🌐 {p.portfolio}</span>}
-        </div>
-      </div>
-
-      {resume.summary && (
-        <div style={{ marginBottom:12 }}>
-          <SectionHead label="Professional Summary" color={s.headingColor} border={s.borderColor} />
-          <div style={{ color:s.textColor, lineHeight:1.6 }}>{resume.summary}</div>
-        </div>
-      )}
-
-      {resume.experience.length > 0 && (
-        <div style={{ marginBottom:12 }}>
-          <SectionHead label="Work Experience" color={s.headingColor} border={s.borderColor} />
-          <ExpBlocks experience={resume.experience} color={s.headingColor} />
-        </div>
-      )}
-
-      {resume.education.length > 0 && (
-        <div style={{ marginBottom:12 }}>
-          <SectionHead label="Education" color={s.headingColor} border={s.borderColor} />
-          <EduBlocks education={resume.education} />
-        </div>
-      )}
-
-      {([...(sk.technical||[]), ...(sk.tools||[]), ...(sk.soft||[])].length > 0) && (
-        <div style={{ marginBottom:12 }}>
-          <SectionHead label="Skills" color={s.headingColor} border={s.borderColor} />
-          {sk.technical?.length > 0 && <div style={{ marginBottom:3 }}><strong>Technical: </strong>{sk.technical.join(" · ")}</div>}
-          {sk.tools?.length     > 0 && <div style={{ marginBottom:3 }}><strong>Tools: </strong>{sk.tools.join(" · ")}</div>}
-          {sk.soft?.length      > 0 && <div><strong>Soft Skills: </strong>{sk.soft.join(" · ")}</div>}
-        </div>
-      )}
-
-      {cer.length > 0 && (
-        <div style={{ marginBottom:12 }}>
-          <SectionHead label="Certifications" color={s.headingColor} border={s.borderColor} />
-          {cer.map((c,i) => (
-            <div key={i} style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-              <span>{c.name||c}</span>
-              <span style={{ color:"#6b7280", fontSize:10 }}>
-                {c.issuer ? `${c.issuer}${c.year ? ` · ${c.year}` : ""}` : ""}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {resume.projects?.length > 0 && (
-        <div style={{ marginBottom:12 }}>
-          <SectionHead label="Projects" color={s.headingColor} border={s.borderColor} />
-          {resume.projects.map((pr,i) => (
-            <div key={i} style={{ marginBottom:6 }}>
-              <div style={{ fontWeight:700 }}>{pr.name}
-                {pr.url && <span style={{ fontWeight:400, color:"#64748b", fontSize:10 }}> ({pr.url})</span>}
-              </div>
-              {pr.stack && <div style={{ color:"#6b7280", fontSize:10 }}>Stack: {pr.stack}</div>}
-              <div style={{ color:s.textColor }}>{pr.description}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {resume.languages?.length > 0 && (
-        <div>
-          <SectionHead label="Languages" color={s.headingColor} border={s.borderColor} />
-          <div>{resume.languages.map(l => `${l.lang} (${l.level})`).join(" · ")}</div>
-        </div>
-      )}
     </div>
   );
 }
@@ -890,7 +427,11 @@ function TemplateGallery({ onBack, onTemplate, onScratch }) {
             </div>
             <div style={{ overflowY:"auto", flex:1, padding:20, background:"#f8fafc" }}>
               <div style={{ background:"white", borderRadius:10, overflow:"hidden", boxShadow:"0 2px 12px rgba(0,0,0,.08)" }}>
-                <ResumePreview resume={preview.resume} />
+                <ResumePreview
+  resume={preview.resume}
+  layout={preview.layout}
+  color={preview.color}
+/>
               </div>
             </div>
             <div style={{ padding:"14px 20px", borderTop:"1px solid rgba(0,0,0,.08)", display:"flex", gap:10, flexShrink:0 }}>
@@ -991,7 +532,8 @@ function ATSPage() {
   const [importing, setImporting] = useState(false);
   const [importStatus, setImportStatus] = useState("");
   const [showPreview, setShowPreview] = useState(false);
-  const [resumeStyle, setResumeStyle] = useState("vs3"); // default: Classic Blue
+  const [resumeLayout, setResumeLayout] = useState("classic");
+  const [resumeColor, setResumeColor]   = useState("#1e40af");
 
   // Backend ATS analysis
   const [atsResult, setAtsResult] = useState(null);   // full backend result
@@ -1244,7 +786,28 @@ function ATSPage() {
           {showPreview ? (
             <div style={{ border: "1.5px solid rgba(0,0,0,.1)", borderRadius: 14, overflow: "hidden" }}>
               <div style={{ padding: "12px 16px", background: "#f8fafc", borderBottom: "1px solid var(--sb-border)" }}>
-                <StylePicker activeId={resumeStyle} onChange={setResumeStyle} />
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Resume Layout</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                    {Object.entries(LAYOUT_META).map(([key, meta]) => (
+                      <button key={key} onClick={() => setResumeLayout(key)}
+                        style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 11px",
+                          background: resumeLayout === key ? resumeColor + "18" : "white",
+                          border: `1.5px solid ${resumeLayout === key ? resumeColor : "rgba(0,0,0,.1)"}`,
+                          borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: 600,
+                          color: resumeLayout === key ? resumeColor : "#475569" }}>
+                        <span>{meta.icon}</span><span>{meta.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: "#475569" }}>Accent colour:</span>
+                    {["#1e40af","#0d9488","#7c3aed","#be185d","#c2410c","#065f46","#1e3a8a","#475569"].map(c => (
+                      <button key={c} onClick={() => setResumeColor(c)}
+                        style={{ width: 20, height: 20, borderRadius: "50%", background: c, border: resumeColor === c ? "2.5px solid #0f172a" : "2px solid transparent", cursor: "pointer", padding: 0 }} />
+                    ))}
+                  </div>
+                </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ fontSize: 12, color: "#475569", fontFamily: "JetBrains Mono, monospace" }}>resume_preview.pdf</span>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -1253,7 +816,7 @@ function ATSPage() {
                   </div>
                 </div>
               </div>
-              <ResumePreview resume={resume} styleId={resumeStyle} />
+              <ResumePreview resume={resume} layout={resumeLayout} color={resumeColor} />
               {/* Issues summary below preview */}
               {atsResult && atsResult.issues.length > 0 && (
                 <div style={{ padding: 16, background: "rgba(239,68,68,.04)", borderTop: "1px solid rgba(239,68,68,.12)" }}>

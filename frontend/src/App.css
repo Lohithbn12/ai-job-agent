@@ -1,4 +1,10 @@
-/* ─── Deep Ocean Theme — App.css ────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   App.css — Deep Ocean Theme
+   NOTE: Core CSS variables & base styles live in GLOBAL_CSS
+   (constants.js). This file adds layout rules and fills gaps.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── Root Layout ───────────────────────────────────────────── */
 
 .app-container {
   min-height: 100vh;
@@ -6,95 +12,48 @@
   background: #020617;
 }
 
-/* ─── Card System ───────────────────────────────────────── */
+/* ─── Content Area — must offset the fixed sidebar ─────────── */
 
-.card {
-  background: #0a1628;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
-  padding: 16px;
-  transition: all 0.25s ease;
+.content-area {
+  margin-left: var(--sb-width, 268px);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: #020617;
+  min-height: 100vh;
 }
 
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(59, 130, 246, 0.12);
-  border-color: rgba(59, 130, 246, 0.2);
+/* ─── Top Bar ───────────────────────────────────────────────── */
+
+.top-bar {
+  height: 64px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: #020b1a;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.08);
+  box-shadow: 0 1px 0 rgba(59, 130, 246, 0.08), 0 2px 16px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+  justify-content: space-between;
+  flex-shrink: 0;
 }
 
-/* ─── Button System ─────────────────────────────────────── */
+/* ─── Main Content ──────────────────────────────────────────── */
 
-.btn {
-  padding: 10px 16px;
-  border-radius: 10px;
-  border: none;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  color: white;
-  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);
-}
-
-.btn-primary:hover {
-  box-shadow: 0 6px 24px rgba(59, 130, 246, 0.5);
-  transform: translateY(-1px);
-}
-
-.btn-outline {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.btn-outline:hover {
-  background: rgba(59, 130, 246, 0.08);
-  border-color: rgba(59, 130, 246, 0.4);
-  color: #60a5fa;
-}
-
-/* ─── Input System ──────────────────────────────────────── */
-
-.input {
+.page-main {
+  flex: 1;
+  padding: 28px 32px;
   width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.88);
-  font-family: inherit;
-  transition: all 0.2s ease;
-}
-
-.input::placeholder {
-  color: rgba(255, 255, 255, 0.2);
-}
-
-.input:focus {
-  border-color: rgba(59, 130, 246, 0.6);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
-  outline: none;
-  background: rgba(59, 130, 246, 0.06);
-}
-
-/* ─── Section spacing ───────────────────────────────────── */
-
-.section {
-  margin-bottom: 20px;
-}
-
-/* ─── Layout System ─────────────────────────────────────── */
-
-.page-container {
   max-width: 1280px;
-  margin: 0 auto;
-  padding: 24px;
+  align-self: center;
+  background: #020617;
+  box-sizing: border-box;
 }
+
+/* ─── Page Header ───────────────────────────────────────────── */
 
 .page-header {
   display: flex;
@@ -116,6 +75,8 @@
   margin-top: 4px;
 }
 
+/* ─── Grid Helpers ──────────────────────────────────────────── */
+
 .grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -128,16 +89,28 @@
   gap: 18px;
 }
 
-/* ─── Glass Effect ──────────────────────────────────────── */
-
-.glass {
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 }
 
-/* ─── Hover Cards ───────────────────────────────────────── */
+/* ─── Card System ───────────────────────────────────────────── */
+
+.card {
+  background: #0a1628;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  padding: 20px;
+  transition: all 0.25s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.2);
+}
 
 .card-hover {
   transition: all 0.25s ease;
@@ -149,7 +122,211 @@
   border-color: rgba(59, 130, 246, 0.25);
 }
 
-/* ─── Divider ───────────────────────────────────────────── */
+/* ─── Section Card ──────────────────────────────────────────── */
+
+.section-card {
+  background: #0a1628;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  margin-bottom: 16px;
+}
+
+/* ─── Resume Maker Two-Column Layout ────────────────────────── */
+
+.ats-cols {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+/* Left panel: fixed width, sticky so it stays visible while scrolling */
+.ats-cols > div:first-child {
+  width: 240px;
+  min-width: 240px;
+  max-width: 240px;
+  flex-shrink: 0;
+  position: sticky;
+  top: calc(64px + 16px);
+  max-height: calc(100vh - 64px - 48px);
+  overflow-y: auto;
+}
+
+/* Right panel: takes all remaining space, never overflows */
+.ats-cols > div:last-child {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ─── Dark Inputs ───────────────────────────────────────────── */
+
+.dark-input {
+  width: 100%;
+  padding: 10px 13px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.88);
+  font-family: inherit;
+  min-width: 0;
+  transition: all 0.15s;
+  box-sizing: border-box;
+}
+
+.dark-input::placeholder { color: rgba(255, 255, 255, 0.2); }
+
+.dark-input:focus {
+  outline: none;
+  border-color: rgba(13, 148, 136, 0.6);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
+  background: rgba(13, 148, 136, 0.04);
+}
+
+/* ─── Dark Textarea ─────────────────────────────────────────── */
+
+.dark-textarea {
+  width: 100%;
+  padding: 10px 13px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.88);
+  font-family: inherit;
+  resize: vertical;
+  line-height: 1.65;
+  transition: all 0.15s;
+  box-sizing: border-box;
+}
+
+.dark-textarea::placeholder { color: rgba(255, 255, 255, 0.2); }
+
+.dark-textarea:focus {
+  outline: none;
+  border-color: rgba(13, 148, 136, 0.6);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
+  background: rgba(13, 148, 136, 0.04);
+}
+
+/* ─── Button System ─────────────────────────────────────────── */
+
+.btn {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.btn-primary {
+  padding: 10px 22px;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 6px 24px rgba(59, 130, 246, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  padding: 9px 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-ghost:hover {
+  border-color: rgba(59, 130, 246, 0.5);
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.6);
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-outline:hover {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+}
+
+/* ─── Standard Input (light ctx fallback) ───────────────────── */
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.88);
+  font-family: inherit;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.input::placeholder { color: rgba(255, 255, 255, 0.2); }
+
+.input:focus {
+  border-color: rgba(13, 148, 136, 0.6);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
+  outline: none;
+  background: rgba(13, 148, 136, 0.06);
+}
+
+/* ─── Nav Buttons ───────────────────────────────────────────── */
+
+.nav-btn {
+  transition: all 0.15s;
+  cursor: pointer;
+}
+
+.nav-btn:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* ─── Hamburger (mobile only) ───────────────────────────────── */
+
+.hamburger {
+  display: none;
+}
+
+/* ─── Glass Effect ──────────────────────────────────────────── */
+
+.glass {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ─── Divider ───────────────────────────────────────────────── */
 
 .divider {
   height: 1px;
@@ -157,7 +334,7 @@
   margin: 20px 0;
 }
 
-/* ─── Badge / Pill ──────────────────────────────────────── */
+/* ─── Badges ────────────────────────────────────────────────── */
 
 .badge {
   display: inline-flex;
@@ -189,12 +366,9 @@
   color: #f87171;
 }
 
-/* ─── Table ─────────────────────────────────────────────── */
+/* ─── Tables ────────────────────────────────────────────────── */
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
+table { width: 100%; border-collapse: collapse; }
 
 th {
   font-size: 11px;
@@ -215,11 +389,9 @@ td {
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-tr:hover td {
-  background: rgba(59, 130, 246, 0.04);
-}
+tr:hover td { background: rgba(59, 130, 246, 0.04); }
 
-/* ─── Overlay / Modal backdrop ──────────────────────────── */
+/* ─── Overlay ───────────────────────────────────────────────── */
 
 .overlay {
   display: none;
@@ -230,6 +402,93 @@ tr:hover td {
   z-index: 45;
 }
 
-.overlay.open {
-  display: block;
+.overlay.open { display: block; }
+
+/* ─── Misc helpers ──────────────────────────────────────────── */
+
+.section  { margin-bottom: 20px; }
+
+.job-card { transition: transform 0.18s ease, box-shadow 0.18s ease; }
+.job-card:hover { transform: translateY(-2px); }
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+.apply-btn { transition: opacity 0.15s; }
+.apply-btn:hover { opacity: 0.85; }
+
+.add-btn { transition: all 0.15s; cursor: pointer; }
+.add-btn:hover { background: rgba(59, 130, 246, 0.15) !important; }
+
+/* ─── Animations ────────────────────────────────────────────── */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes spin    { to { transform: rotate(360deg); } }
+@keyframes pulse   { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.fade-up  { animation: fadeUp  0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.fade-in  { animation: fadeIn  0.25s ease both; }
+.slide-in { animation: slideIn 0.3s  cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* ─── Responsive ────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: none; }
+
+  .content-area { margin-left: 0 !important; }
+  .top-bar      { padding: 0 12px !important; }
+  .hamburger    { display: flex !important; }
+  .page-main    { padding: 16px 12px !important; }
+
+  .two-col,
+  .grid-2       { grid-template-columns: 1fr !important; }
+  .card-grid    { grid-template-columns: 1fr !important; }
+
+  /* Resume Maker: stack panels vertically on mobile */
+  .ats-cols { flex-direction: column !important; }
+  .ats-cols > div:first-child {
+    width: 100%    !important;
+    max-width: 100% !important;
+    min-width: 0   !important;
+    position: static !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-main    { padding: 12px 10px !important; }
+  .card         { border-radius: 10px !important; }
+  .section-card { padding: 14px !important; border-radius: 10px !important; }
+  .btn-primary  { padding: 10px 16px !important; font-size: 13px !important; }
+  .btn-ghost    { padding: 8px 14px  !important; font-size: 12px !important; }
+  .dark-input,
+  .dark-textarea,
+  .input        { font-size: 14px !important; }
+}
+
+
+select.input {
+  background-color: #0a1628 !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+select.input option {
+  background-color: #0a1628;
+  color: white;
+}
+
+/* Fix for focus/active */
+select.input:focus {
+  background-color: #0a1628;
+  color: white;
 }
