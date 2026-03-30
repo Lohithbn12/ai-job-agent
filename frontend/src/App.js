@@ -17,6 +17,7 @@ import ResumeMaker from "./ResumeMaker";
 import InterviewPrep from "./InterviewPrep";
 import UserManagement from "./UserManagement";
 import LinkedinAnalyzer from "./components/LinkedinAnalyzer";
+import PortfolioGenerator from "./PortfolioGenerator";
 
 // ── Live Clock component ──────────────────────────────────────────────────────
 function LiveClock() {
@@ -121,11 +122,11 @@ export default function App() {
       const reqs = [];
       for (const exp of selectedExps)
         for (const loc of locStrs)
-          // Pass topSkills so backend picks best 1-2 for query building
+          // Only pass roles — no skill enrichment in query
           reqs.push(axios.post(`${API}/search-jobs/`, {
-            roles, keywords, experience_level: exp, location: loc, sources,
+            roles, keywords: roles, experience_level: exp, location: loc, sources,
             weighted_skills: weightedSkills,
-            top_skills: topSkills,        // ← new: top 6-10 for query
+            top_skills: [],   // ← disabled: search by role name only
           }).then((r) => r.data).catch(() => ({ jobs: [], by_source: {}, keywords_used: [] })));
       const results = await Promise.all(reqs);
       const seen = new Set(), all = [];
@@ -164,6 +165,31 @@ export default function App() {
 
   const visibleJobs = (filterSource === "all" ? jobs : jobs.filter((j) => j.source?.toLowerCase() === filterSource))
     .slice().sort((a, b) => (a.exp_mismatch ? 1 : 0) - (b.exp_mismatch ? 1 : 0));
+
+  // ── WhatsApp helpers ────────────────────────────────────────────────────────
+  const sendJobToWhatsApp = (job) => {
+    const msg =
+      `💼 *${job.title || "Job Opening"}*\n` +
+      `🏢 ${job.company || "Company not listed"}\n` +
+      (job.location ? `📍 ${job.location}\n` : "") +
+      (job.salary   ? `💰 ${job.salary}\n`   : "") +
+      `🎯 Experience: ${job.exp_required || job.experience_level || "Not specified"}\n` +
+      `🔗 Apply: ${job.apply_link}\n` +
+      `📌 Source: ${job.source}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+  };
+
+  const sendAllJobsToWhatsApp = () => {
+    const top10 = visibleJobs.slice(0, 10);
+    const msg =
+      `🚀 *Job Opportunities (${top10.length})*\n\n` +
+      top10.map((j, i) =>
+        `*${i + 1}. ${j.title}*\n` +
+        `🏢 ${j.company || "—"}  📍 ${j.location || "—"}\n` +
+        `🔗 ${j.apply_link}`
+      ).join("\n\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+  };
   const filteredCourses = (filterPlatform === "all" ? courses : courses.filter((c) => c.platform === filterPlatform))
     .slice().sort((a, b) => sortCourses === "rating" ? (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0) : (a.platform || "").localeCompare(b.platform || ""));
 
@@ -175,6 +201,7 @@ export default function App() {
     { key: "interview", icon: "🎯", label: "Interview Prep",  sub: "Q&A predictor · Aptitude · Coding" },
     { key: "users",     icon: "👥", label: "User Management", sub: "Roles · Permissions · Departments" },
     { key: "linkedin",  icon: "🔗", label: "LinkedIn Analyzer",sub: "Optimize your profile",},
+    { key: "portfolio", icon: "🌐", label: "Portfolio Generator", sub: "Turn resume → website" },
   ];
 
   // Filter nav based on user level + page_permissions
@@ -381,52 +408,6 @@ export default function App() {
                         <AddRow value={newRole} onChange={setNewRole} onAdd={addRole} placeholder="e.g. Data Analyst" />
                       </Section>
 
-                      <Section label="Top Skills for Search" note={`${topSkills.length} selected · used to build queries`}>
-                        {/* Explanation */}
-                        <div style={{ fontSize:11.5, color:"rgba(255,255,255,0.38)", marginBottom:10, lineHeight:1.6, padding:"8px 10px", background:"rgba(13,148,136,.05)", borderRadius:8, border:"1px solid rgba(13,148,136,.12)" }}>
-                          🎯 These <strong>{topSkills.length} skills</strong> were auto-extracted as your strongest from the resume. They are combined with your role to build the search query. Remove any that don't fit, or add more below.
-                        </div>
-
-                        {/* Top skill tags */}
-                        <div style={{ display:"flex", flexWrap:"wrap", gap:6, minHeight:28, marginBottom:10 }}>
-                          {topSkills.length === 0 && <span style={{ fontSize:12, color:"rgba(255,255,255,0.3)", fontStyle:"italic" }}>No top skills — add manually below</span>}
-                          {topSkills.map((s, i) => (
-                            <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:5, padding:"5px 10px 5px 12px", background:"rgba(13,148,136,.1)", border:"1px solid rgba(13,148,136,.25)", color:"var(--teal)", borderRadius:20, fontSize:12, fontWeight:600 }}>
-                              {s}
-                              <button onClick={() => setTopSkills(p => p.filter((_, j) => j !== i))}
-                                style={{ background:"none", border:"none", cursor:"pointer", color:"inherit", fontSize:14, padding:0, lineHeight:1, opacity:.6 }}
-                                title="Remove from search">×</button>
-                            </span>
-                          ))}
-                        </div>
-
-                        {/* Manual add row */}
-                        <div style={{ display:"flex", gap:6 }}>
-                          <input value={newTopSkill} onChange={e => setNewTopSkill(e.target.value)}
-                            onKeyDown={e => e.key === "Enter" && addTopSkill()}
-                            placeholder="Add a skill to search (e.g. Tableau)"
-                            className="dark-input" style={{ flex:1 }} />
-                          <button onClick={addTopSkill} className="btn-add">+ Add</button>
-                        </div>
-
-                        {/* Show all detected skills as suggestions */}
-                        {skills.length > 0 && (
-                          <div style={{ marginTop:10 }}>
-                            <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)", marginBottom:6, fontWeight:600, textTransform:"uppercase", letterSpacing:".5px" }}>All detected skills — click to add to search:</div>
-                            <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
-                              {skills.filter(s => !topSkills.includes(s)).slice(0, 20).map((s, i) => (
-                                <button key={i} onClick={() => setTopSkills(p => [...p, s])}
-                                  style={{ padding:"3px 9px", background:"rgba(255,255,255,0.06)", border:"1px solid rgba(0,0,0,.1)", borderRadius:5, fontSize:11, color:"rgba(255,255,255,0.45)", cursor:"pointer", fontWeight:500, transition:"all .12s" }}
-                                  onMouseEnter={e => { e.currentTarget.style.borderColor="var(--teal)"; e.currentTarget.style.color="var(--teal)"; e.currentTarget.style.background="rgba(13,148,136,.06)"; }}
-                                  onMouseLeave={e => { e.currentTarget.style.borderColor="rgba(255,255,255,0.1)"; e.currentTarget.style.color="rgba(255,255,255,0.45)"; e.currentTarget.style.background="rgba(255,255,255,0.06)"; }}>
-                                  + {s}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </Section>
-
                       <Section label="Locations" note="Leave blank for all">
                         {locations.map((loc, i) => (
                           <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
@@ -487,7 +468,12 @@ export default function App() {
                           </div>
                         )}
                       </div>
-                      <button onClick={() => setStep(2)} style={{ padding: "8px 18px", background: "#0c1a3d", border: "1.5px solid rgba(255,255,255,0.08)", borderRadius: 9, color: "rgba(255,255,255,0.45)", fontSize: 13, cursor: "pointer" }}>← Refine</button>
+                      <div style={{ display:"flex", gap:8 }}>
+                        <button onClick={sendAllJobsToWhatsApp} style={{ padding: "8px 16px", background: "rgba(37,211,102,.12)", border: "1.5px solid rgba(37,211,102,.3)", borderRadius: 9, color: "#25d366", fontSize: 13, fontWeight: 700, cursor: "pointer", display:"flex", alignItems:"center", gap:6 }}>
+                          <span>📲</span> Send to WhatsApp
+                        </button>
+                        <button onClick={() => setStep(2)} style={{ padding: "8px 18px", background: "#0c1a3d", border: "1.5px solid rgba(255,255,255,0.08)", borderRadius: 9, color: "rgba(255,255,255,0.45)", fontSize: 13, cursor: "pointer" }}>← Refine</button>
+                      </div>
                     </div>
 
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 24 }}>
@@ -557,10 +543,16 @@ export default function App() {
                                 </div>
                               )}
 
-                              <a href={job.apply_link} target="_blank" rel="noreferrer" className="apply-btn"
-                                style={{ marginTop: 16, display: "block", textAlign: "center", padding: "10px", background: "var(--teal)", color: "white", borderRadius: 10, fontSize: 13, fontWeight: 700, fontFamily: "Plus Jakarta Sans, system-ui, sans-serif" }}>
-                                Apply Now →
-                              </a>
+                              <div style={{ display:"flex", gap:8, marginTop:16 }}>
+                                <button onClick={() => sendJobToWhatsApp(job)}
+                                  style={{ flex:"0 0 auto", padding:"10px 14px", background:"rgba(37,211,102,.1)", border:"1px solid rgba(37,211,102,.25)", color:"#25d366", borderRadius:10, fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:5, whiteSpace:"nowrap" }}>
+                                  📲 WhatsApp
+                                </button>
+                                <a href={job.apply_link} target="_blank" rel="noreferrer" className="apply-btn"
+                                  style={{ flex:1, display:"block", textAlign:"center", padding:"10px", background:"var(--teal)", color:"white", borderRadius:10, fontSize:13, fontWeight:700, fontFamily:"Plus Jakarta Sans, system-ui, sans-serif" }}>
+                                  Apply Now →
+                                </a>
+                              </div>
                             </div>
                           );
                         })}
@@ -664,6 +656,7 @@ export default function App() {
                 {mode === "interview" && <InterviewPrep />}
             {mode === "users" && <UserManagement currentUser={user} />}
             {mode === "linkedin" && <LinkedinAnalyzer />}
+            {mode === "portfolio" && <PortfolioGenerator />}
 
           </main>
         </div>

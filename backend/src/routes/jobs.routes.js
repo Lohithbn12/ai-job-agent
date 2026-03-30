@@ -55,42 +55,15 @@ router.post("/search-jobs/", async (req, res) => {
     top_skills       = [],
   } = req.body || {};
 
-  // ── Build search queries (mirrors main.py logic exactly) ──────────────────
+  // ── Build search queries — role names only, no skill enrichment ─────────────
   const roleKeywords = roles.length
     ? [...roles]
     : keywords.filter((k) => [...ROLE_INDICATORS].some((r) => k.toLowerCase().includes(r)));
 
-  // Pick top 1–2 skills for query enrichment
-  let skillKeywords = top_skills.length
-    ? top_skills.slice(0, 2)
-    : keywords
-        .filter((k) => !roleKeywords.includes(k) && ![...ROLE_INDICATORS].some((r) => k.toLowerCase().includes(r)))
-        .slice(0, 2);
-
-  if (!skillKeywords.length && weighted_skills.length) {
-    const existing = new Set(skillKeywords.map((s) => s.toLowerCase()));
-    const extras   = weighted_skills
-      .filter((s) => s.weight >= 0.35 && !existing.has(s.skill.toLowerCase()) &&
-        ["language","tool","viz","database","cloud","ml"].includes(s.category))
-      .map((s) => s.skill)
-      .slice(0, 2);
-    skillKeywords = [...skillKeywords, ...extras];
-  }
-
-  // Deduplicate skill keywords — cap at 2
-  skillKeywords = [...new Map(skillKeywords.map((s) => [s.toLowerCase(), s])).values()].slice(0, 2);
-
-  // Build final query list — max 3
-  let finalQueries = [];
-  if (roleKeywords.length) {
-    const topSkill = skillKeywords[0]?.toLowerCase() || "";
-    finalQueries   = topSkill
-      ? [`${roleKeywords[0]} ${topSkill}`, roleKeywords[0]]
-      : [roleKeywords[0]];
-    if (roleKeywords[1]) finalQueries.push(roleKeywords[1]);
-  } else {
-    finalQueries = skillKeywords.length ? [skillKeywords[0]] : ["data analyst"];
-  }
+  // Use role names directly as queries — no skill appending
+  let finalQueries = roleKeywords.length
+    ? roleKeywords.slice(0, 3)
+    : ["data analyst"];
 
   // Deduplicate + hard cap at 3
   finalQueries = [...new Map(finalQueries.map((q) => [q.toLowerCase(), q])).values()].slice(0, 3);

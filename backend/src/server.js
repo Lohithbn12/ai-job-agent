@@ -23,6 +23,8 @@ const interviewRoutes = require("./routes/interview.routes");
 const atsRoutes       = require("./routes/ats.routes");
 const linkedinRoutes  = require("./routes/linkedin.routes");
 const linkedinPdfRoutes = require("./routes/linkedin_pdf_route");  // ← NEW
+const roadmapRoutes = require("./routes/roadmap.routes");
+const portfolioRoutes = require("./routes/portfolio.routes");
 
 const app  = express();
 const PORT = process.env.PORT || 8000;
@@ -57,6 +59,9 @@ app.use("/",         interviewRoutes);
 app.use("/ats",      atsRoutes);
 app.use("/linkedin", linkedinRoutes);
 app.use("/linkedin", linkedinPdfRoutes);   // ← NEW  →  POST /linkedin/parse-pdf
+app.use("/roadmap", roadmapRoutes);
+app.use("/portfolio", portfolioRoutes);
+
 
 app.use((err, req, res, _next) => {
   if (err.code === "LIMIT_FILE_SIZE")      return res.status(413).json({ detail: `File too large. Max size is ${process.env.MAX_FILE_SIZE_MB || 10}MB.` });
