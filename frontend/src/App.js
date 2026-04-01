@@ -9,9 +9,11 @@
 
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { EXP_OPTIONS, EXP_LABEL, SOURCE_CONFIG, PLATFORM_CONFIG,
-         GLOBAL_CSS, API, SKILLS_PREVIEW,
-         Spinner, Label, Tag, FilterChip, MetaRow, AddRow, Section } from "./constants";
+import {
+  EXP_OPTIONS, EXP_LABEL, SOURCE_CONFIG, PLATFORM_CONFIG,
+  GLOBAL_CSS, API, SKILLS_PREVIEW,
+  Spinner, Label, Tag, FilterChip, MetaRow, AddRow, Section
+} from "./constants";
 import AuthWrapper from "./Auth";
 import ResumeMaker from "./ResumeMaker";
 import InterviewPrep from "./InterviewPrep";
@@ -29,8 +31,8 @@ function LiveClock() {
     return () => clearInterval(t);
   }, []);
   return (
-    <div style={{ fontSize:14, fontWeight:700, color:"var(--teal)", fontFamily:"'Geist Mono', 'Courier New', monospace", letterSpacing:".5px" }}>
-      {time.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",hour12:true})}
+    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--teal)", fontFamily: "'Geist Mono', 'Courier New', monospace", letterSpacing: ".5px" }}>
+      {time.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}
     </div>
   );
 }
@@ -38,13 +40,13 @@ function LiveClock() {
 
 export default function App() {
   // ── Auth state (must come before ALL other hooks) ────────────────────────
-  const [authPage, setAuthPage]   = useState("login");
-  const [user, setUser]           = useState(() => {
+  const [authPage, setAuthPage] = useState("login");
+  const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem("js_user")) || null; } catch { return null; }
   });
 
   // ── App state (always declared, regardless of auth) ───────────────────────
-  const [mode, setMode]           = useState("jobs");
+  const [mode, setMode] = useState("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   /* Job state */
@@ -85,13 +87,13 @@ export default function App() {
       const fd = new FormData(); fd.append("file", file);
       const res = await axios.post(`${API}/upload-resume/`, fd);
 
-      const allRoles   = (res.data.roles || []).filter((r) => r.length > 2);
-      const allSkills  = (res.data.skills || []).filter((s) => s.length > 2);
-      const weighted   = res.data.weighted_skills || [];
+      const allRoles = (res.data.roles || []).filter((r) => r.length > 2);
+      const allSkills = (res.data.skills || []).filter((s) => s.length > 2);
+      const weighted = res.data.weighted_skills || [];
 
       // ── Extract top 6-10 skills by weight for search ──────────────────────
       // Sort by weight descending, pick top 8, filter noise words
-      const NOISE = new Set(["time","hands","good","strong","knowledge","skills","experience","enterprise","team"]);
+      const NOISE = new Set(["time", "hands", "good", "strong", "knowledge", "skills", "experience", "enterprise", "team"]);
       const top = weighted
         .filter(w => w.weight >= 0.15 && !NOISE.has(w.skill.toLowerCase()))
         .sort((a, b) => b.weight - a.weight)
@@ -162,7 +164,7 @@ export default function App() {
   const addLocation = () => setLocations((p) => [...p, { city: "", country: "" }]);
   const removeLocation = (i) => setLocations((p) => p.filter((_, idx) => idx !== i));
   const updateLocation = (i, f, v) => setLocations((p) => p.map((l, idx) => idx === i ? { ...l, [f]: v } : l));
-  const addRole     = () => { const r = newRole.trim(); if (r && !roles.includes(r)) setRoles((p) => [...p, r]); setNewRole(""); };
+  const addRole = () => { const r = newRole.trim(); if (r && !roles.includes(r)) setRoles((p) => [...p, r]); setNewRole(""); };
   const addTopSkill = () => { const s = newTopSkill.trim(); if (s && !topSkills.includes(s)) setTopSkills((p) => [...p, s]); setNewTopSkill(""); };
 
   const visibleJobs = (filterSource === "all" ? jobs : jobs.filter((j) => j.source?.toLowerCase() === filterSource))
@@ -174,7 +176,7 @@ export default function App() {
       `💼 *${job.title || "Job Opening"}*\n` +
       `🏢 ${job.company || "Company not listed"}\n` +
       (job.location ? `📍 ${job.location}\n` : "") +
-      (job.salary   ? `💰 ${job.salary}\n`   : "") +
+      (job.salary ? `💰 ${job.salary}\n` : "") +
       `🎯 Experience: ${job.exp_required || job.experience_level || "Not specified"}\n` +
       `🔗 Apply: ${job.apply_link}\n` +
       `📌 Source: ${job.source}`;
@@ -197,12 +199,13 @@ export default function App() {
 
   // All possible nav items
   const ALL_NAV = [
-    { key: "jobs",      icon: "💼", label: "Job Search",      sub: step === 3 ? `${jobs.length} results` : step === 2 ? "Configure search" : "Upload resume" },
-    { key: "courses",   icon: "🎓", label: "Free Courses",    sub: courseStatus || "Find learning resources" },
-    { key: "ats",       icon: "📄", label: "Resume Maker",    sub: "ATS-optimized builder" },
-    { key: "interview", icon: "🎯", label: "Interview Prep",  sub: "Q&A predictor · Aptitude · Coding" },
-    { key: "users",     icon: "👥", label: "User Management", sub: "Roles · Permissions · Departments" },
-    { key: "linkedin",  icon: "🔗", label: "LinkedIn Analyzer",sub: "Optimize your profile",},
+    { key: "home", icon: "🏠", label: "Home", sub: "Dashboard overview" },
+    { key: "jobs", icon: "💼", label: "Job Search", sub: step === 3 ? `${jobs.length} results` : step === 2 ? "Configure search" : "Upload resume" },
+    { key: "courses", icon: "🎓", label: "Free Courses", sub: courseStatus || "Find learning resources" },
+    { key: "ats", icon: "📄", label: "Resume Maker", sub: "ATS-optimized builder" },
+    { key: "interview", icon: "🎯", label: "Interview Prep", sub: "Q&A predictor · Aptitude · Coding" },
+    { key: "users", icon: "👥", label: "User Management", sub: "Roles · Permissions · Departments" },
+    { key: "linkedin", icon: "🔗", label: "LinkedIn Analyzer", sub: "Optimize your profile", },
     { key: "portfolio", icon: "🌐", label: "Portfolio Generator", sub: "Turn resume → website" },
     { key: "stocks", icon: "📈", label: "Stock Predictor" }
 
@@ -229,7 +232,7 @@ export default function App() {
   if (!user) {
     return (
       <>
-        <style dangerouslySetInnerHTML={{__html: GLOBAL_CSS}} />
+        <style dangerouslySetInnerHTML={{ __html: GLOBAL_CSS }} />
         <AuthWrapper onLogin={u => setUser(u)} />
       </>
     );
@@ -243,34 +246,34 @@ export default function App() {
         {/* Overlay */}
         <div className={`overlay${sidebarOpen ? " open" : ""}`} onClick={() => setSidebarOpen(false)} />
 
-                {/* ══ SIDEBAR ══ */}
+        {/* ══ SIDEBAR ══ */}
         <aside className={`sidebar${sidebarOpen ? " open" : ""}`}>
           {/* User Profile Card */}
-          <div style={{ padding:"18px 16px 14px", background:"linear-gradient(135deg,#0c1a3d 0%,#0f2854 100%)", flexShrink:0, borderBottom:"1px solid rgba(59,130,246,.1)" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-              <div style={{ width:44, height:44, borderRadius:12, background:"rgba(255,255,255,.2)", border:"2px solid rgba(255,255,255,.35)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:800, color:"white", flexShrink:0 }}>
-                {(user?.name||user?.email||"U")[0].toUpperCase()}
+          <div style={{ padding: "18px 16px 14px", background: "linear-gradient(135deg,#0c1a3d 0%,#0f2854 100%)", flexShrink: 0, borderBottom: "1px solid rgba(59,130,246,.1)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(255,255,255,.2)", border: "2px solid rgba(255,255,255,.35)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: "white", flexShrink: 0 }}>
+                {(user?.name || user?.email || "U")[0].toUpperCase()}
               </div>
-              <div style={{ minWidth:0, flex:1 }}>
-                <div style={{ fontSize:14, fontWeight:700, color:"white", lineHeight:1.2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{user?.name||"User"}</div>
-                <div style={{ fontSize:10, color:"rgba(255,255,255,.65)", marginTop:3, textTransform:"uppercase", letterSpacing:"1px", fontWeight:600 }}>Member</div>
-                <div style={{ fontSize:10, color:"rgba(255,255,255,.45)", marginTop:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{user?.email}</div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "white", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user?.name || "User"}</div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,.65)", marginTop: 3, textTransform: "uppercase", letterSpacing: "1px", fontWeight: 600 }}>Member</div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,.45)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user?.email}</div>
               </div>
             </div>
           </div>
 
           {/* Search */}
-          <div style={{ padding:"10px 14px", borderBottom:"1px solid var(--sb-border)", flexShrink:0 }}>
-            <div style={{ position:"relative" }}>
-              <span style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)", fontSize:13, color:"var(--sb-text2)", pointerEvents:"none" }}>🔍</span>
-              <input placeholder="Search navigation..." style={{ width:"100%", padding:"8px 10px 8px 30px", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.06)", borderRadius:8, fontSize:12.5, color:"var(--sb-text)", outline:"none" }}
-                onFocus={e=>{e.target.style.borderColor="rgba(13,148,136,.5)";e.target.style.background="rgba(0,0,0,.06)";}}
-                onBlur={e=>{e.target.style.borderColor="rgba(255,255,255,.08)";e.target.style.background="rgba(0,0,0,.07)";}} />
+          <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--sb-border)", flexShrink: 0 }}>
+            <div style={{ position: "relative" }}>
+              <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "var(--sb-text2)", pointerEvents: "none" }}>🔍</span>
+              <input placeholder="Search navigation..." style={{ width: "100%", padding: "8px 10px 8px 30px", background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.06)", borderRadius: 8, fontSize: 12.5, color: "var(--sb-text)", outline: "none" }}
+                onFocus={e => { e.target.style.borderColor = "rgba(13,148,136,.5)"; e.target.style.background = "rgba(0,0,0,.06)"; }}
+                onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,.08)"; e.target.style.background = "rgba(0,0,0,.07)"; }} />
             </div>
           </div>
 
           {/* Nav */}
-          <nav style={{ flex:1, padding:"12px 10px", display:"flex", flexDirection:"column", gap:2, overflowY:"auto" }}>
+          <nav style={{ flex: 1, padding: "12px 10px", display: "flex", flexDirection: "column", gap: 2, overflowY: "auto" }}>
             <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", fontWeight: 700, letterSpacing: "1.4px", padding: "4px 10px 10px", textTransform: "uppercase" }}>Navigation</div>
             {navItems.map((item) => (
               <button key={item.key} onClick={() => { setMode(item.key); setSidebarOpen(false); }} className="nav-btn"
@@ -309,10 +312,10 @@ export default function App() {
             </div>
           )}
           {/* Sign Out */}
-          <div style={{ padding:"12px 14px", borderTop:"1px solid var(--sb-border)", flexShrink:0 }}>
-            <button onClick={logout} style={{ width:"100%", padding:"11px", background:"rgba(248,113,113,.1)", border:"1px solid rgba(248,113,113,.15)", borderRadius:10, color:"#fca5a5", fontSize:13, fontWeight:600, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8, transition:"all .15s" }}
-              onMouseEnter={e=>{e.currentTarget.style.background="rgba(220,38,38,.25)";}}
-              onMouseLeave={e=>{e.currentTarget.style.background="rgba(220,38,38,.15)";}}>
+          <div style={{ padding: "12px 14px", borderTop: "1px solid var(--sb-border)", flexShrink: 0 }}>
+            <button onClick={logout} style={{ width: "100%", padding: "11px", background: "rgba(248,113,113,.1)", border: "1px solid rgba(248,113,113,.15)", borderRadius: 10, color: "#fca5a5", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all .15s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(220,38,38,.25)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(220,38,38,.15)"; }}>
               → Sign Out
             </button>
           </div>
@@ -321,36 +324,92 @@ export default function App() {
         {/* ══ CONTENT ══ */}
         <div className="content-area" style={{ marginLeft: "var(--sb-width)", flex: 1, display: "flex", flexDirection: "column", minWidth: 0, background: "#020617" }}>
 
-                    {/* Topbar — dashboard greeting style */}
-          <header className="top-bar" style={{ height:64, borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", padding:"0 28px", justifyContent:"space-between", background:"#020b1a", position:"sticky", top:0, zIndex:30, boxShadow:"0 1px 0 rgba(59,130,246,.08), 0 2px 16px rgba(0,0,0,.4)" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-              <button className="hamburger" onClick={()=>setSidebarOpen(true)} style={{ display:"none", background:"none", border:"none", color:"rgba(255,255,255,0.45)", fontSize:18, cursor:"pointer", padding:4, alignItems:"center" }}>☰</button>
+          {/* Topbar — dashboard greeting style */}
+          <header className="top-bar" style={{ height: 64, borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", padding: "0 28px", justifyContent: "space-between", background: "#020b1a", position: "sticky", top: 0, zIndex: 30, boxShadow: "0 1px 0 rgba(59,130,246,.08), 0 2px 16px rgba(0,0,0,.4)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <button className="hamburger" onClick={() => setSidebarOpen(true)} style={{ display: "none", background: "none", border: "none", color: "rgba(255,255,255,0.45)", fontSize: 18, cursor: "pointer", padding: 4, alignItems: "center" }}>☰</button>
               {/* Greeting with emoji + time of day */}
-              <span style={{ fontSize:24 }}>{new Date().getHours()<12?"🌅":new Date().getHours()<17?"☀️":"🌙"}</span>
+              <span style={{ fontSize: 24 }}>{new Date().getHours() < 12 ? "🌅" : new Date().getHours() < 17 ? "☀️" : "🌙"}</span>
               <div>
-                <div style={{ fontSize:16, fontWeight:700, color:"rgba(255,255,255,0.92)", lineHeight:1.2 }}>
-                  Good {new Date().getHours()<12?"Morning":new Date().getHours()<17?"Afternoon":"Evening"}, {user?.name?.split(" ")[0]||"there"}!
+                <div style={{ fontSize: 16, fontWeight: 700, color: "rgba(255,255,255,0.92)", lineHeight: 1.2 }}>
+                  Good {new Date().getHours() < 12 ? "Morning" : new Date().getHours() < 17 ? "Afternoon" : "Evening"}, {user?.name?.split(" ")[0] || "there"}!
                 </div>
-                <div style={{ fontSize:12, color:"rgba(255,255,255,0.38)", marginTop:2 }}>
-                  {new Date().toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})}
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", marginTop: 2 }}>
+                  {new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
                 </div>
               </div>
             </div>
-            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               {/* Live clock */}
-              <div style={{ fontSize:15, fontWeight:700, color:"#60a5fa", fontFamily:"'Geist Mono', 'Courier New', monospace", letterSpacing:".5px", padding:"6px 14px", background:"rgba(59,130,246,.08)", borderRadius:20, border:"1px solid rgba(59,130,246,.15)" }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#60a5fa", fontFamily: "'Geist Mono', 'Courier New', monospace", letterSpacing: ".5px", padding: "6px 14px", background: "rgba(59,130,246,.08)", borderRadius: 20, border: "1px solid rgba(59,130,246,.15)" }}>
                 <LiveClock />
               </div>
               {/* Current section badge */}
-              <div style={{ padding:"6px 14px", background:"rgba(59,130,246,.08)", border:"1px solid rgba(59,130,246,.15)", borderRadius:20, fontSize:12, fontWeight:600, color:"#60a5fa" }}>
-                {mode==="jobs"?"💼 Job Search":mode==="courses"?"🎓 Free Courses":mode==="interview"?"🎯 Interview Prep":"📄 Resume Maker"}
+              <div style={{ padding: "6px 14px", background: "rgba(59,130,246,.08)", border: "1px solid rgba(59,130,246,.15)", borderRadius: 20, fontSize: 12, fontWeight: 600, color: "#60a5fa" }}>
+                {mode === "jobs" ? "💼 Job Search" : mode === "courses" ? "🎓 Free Courses" : mode === "interview" ? "🎯 Interview Prep" : "📄 Resume Maker"}
               </div>
-              {mode==="jobs"&&step===3&&<span style={{ fontSize:12, color:"rgba(255,255,255,0.45)", fontWeight:500, padding:"6px 12px", background:"#0c1a3d", borderRadius:20 }}>{jobs.length} positions</span>}
+              {mode === "jobs" && step === 3 && <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", fontWeight: 500, padding: "6px 12px", background: "#0c1a3d", borderRadius: 20 }}>{jobs.length} positions</span>}
             </div>
           </header>
 
           <main className="page-main" style={{ flex: 1, padding: "28px 32px", maxWidth: 1280, width: "100%", alignSelf: "center", background: "#020617" }}>
+            {mode === "home" && (
+              <div className="fade-up">
+                <div style={{ marginBottom: 30 }}>
+                  <h1 style={{
+                    fontSize: 34,
+                    fontWeight: 800,
+                    color: "white"
+                  }}>
+                    Welcome back, {user?.name?.split(" ")[0]} 👋
+                  </h1>
 
+                  <p style={{ color: "rgba(255,255,255,0.45)" }}>
+                    Your AI Career Dashboard
+                  </p>
+                </div>
+
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))",
+                  gap: "16px"
+                }}>
+                  {[
+                    { icon: "💼", title: "Job Parsing", key: "jobs" },
+                    { icon: "📄", title: "Resume Maker", key: "ats" },
+                    { icon: "🎓", title: "Courses", key: "courses" },
+                    { icon: "🎯", title: "Interview Prep", key: "interview" },
+                    { icon: "🔗", title: "LinkedIn", key: "linkedin" },
+                    { icon: "🌐", title: "Portfolio", key: "portfolio" },
+                    { icon: "📈", title: "Stock Predictor", key: "stocks" }
+                  ].map((card, i) => (
+                    <div
+                      key={i}
+                      onClick={() => setMode(card.key)}
+                      style={{
+                        background: "#0a1628",
+                        padding: "24px",
+                        borderRadius: "16px",
+                        cursor: "pointer",
+                        border: "1px solid rgba(255,255,255,0.08)"
+                      }}
+                    >
+                      <div style={{ fontSize: "32px", marginBottom: "12px" }}>
+                        {card.icon}
+                      </div>
+
+                      <h3 style={{
+                        color: "white",
+                        fontSize: "18px",
+                        fontWeight: 700
+                      }}>
+                        {card.title}
+                      </h3>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* ══ JOB SEARCH ══ */}
             {mode === "jobs" && (
               <>
@@ -472,8 +531,8 @@ export default function App() {
                           </div>
                         )}
                       </div>
-                      <div style={{ display:"flex", gap:8 }}>
-                        <button onClick={sendAllJobsToWhatsApp} style={{ padding: "8px 16px", background: "rgba(37,211,102,.12)", border: "1.5px solid rgba(37,211,102,.3)", borderRadius: 9, color: "#25d366", fontSize: 13, fontWeight: 700, cursor: "pointer", display:"flex", alignItems:"center", gap:6 }}>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={sendAllJobsToWhatsApp} style={{ padding: "8px 16px", background: "rgba(37,211,102,.12)", border: "1.5px solid rgba(37,211,102,.3)", borderRadius: 9, color: "#25d366", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
                           <span>📲</span> Send to WhatsApp
                         </button>
                         <button onClick={() => setStep(2)} style={{ padding: "8px 18px", background: "#0c1a3d", border: "1.5px solid rgba(255,255,255,0.08)", borderRadius: 9, color: "rgba(255,255,255,0.45)", fontSize: 13, cursor: "pointer" }}>← Refine</button>
@@ -518,42 +577,42 @@ export default function App() {
                               </div>
                               {job.exp_hard_mismatch && <div style={{ marginTop: 10, padding: "7px 11px", background: "rgba(220,38,38,.06)", border: "1px solid rgba(239,68,68,.18)", borderRadius: 8, fontSize: 11, color: "#fca5a5", fontWeight: 600 }}>⛔ Confirmed — requires {job.exp_required}</div>}
                               {!job.exp_hard_mismatch && job.exp_mismatch && <div style={{ marginTop: 10, padding: "7px 11px", background: "rgba(217,119,6,.06)", border: "1px solid rgba(245,158,11,.18)", borderRadius: 8, fontSize: 11, color: "#fcd34d" }}>⚠ May not match your range</div>}
-                                                            {/* ── Application Success Predictor ── */}
+                              {/* ── Application Success Predictor ── */}
                               {job.match && (
-                                <div style={{ marginTop:12, padding:"11px 13px", background:`${job.match.bar_color}0d`, border:`1px solid ${job.match.bar_color}30`, borderRadius:10 }}>
-                                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7 }}>
-                                    <span style={{ fontSize:11, fontWeight:700, color:"rgba(255,255,255,0.45)" }}>🎯 Application Match</span>
-                                    <span style={{ fontSize:13, fontWeight:800, color:job.match.bar_color }}>{job.match.score}%</span>
+                                <div style={{ marginTop: 12, padding: "11px 13px", background: `${job.match.bar_color}0d`, border: `1px solid ${job.match.bar_color}30`, borderRadius: 10 }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.45)" }}>🎯 Application Match</span>
+                                    <span style={{ fontSize: 13, fontWeight: 800, color: job.match.bar_color }}>{job.match.score}%</span>
                                   </div>
-                                  <div style={{ height:5, background:"rgba(0,0,0,.07)", borderRadius:4, overflow:"hidden", marginBottom:7 }}>
-                                    <div style={{ height:"100%", width:`${job.match.score}%`, background:job.match.bar_color, borderRadius:4, transition:"width .8s ease" }} />
+                                  <div style={{ height: 5, background: "rgba(0,0,0,.07)", borderRadius: 4, overflow: "hidden", marginBottom: 7 }}>
+                                    <div style={{ height: "100%", width: `${job.match.score}%`, background: job.match.bar_color, borderRadius: 4, transition: "width .8s ease" }} />
                                   </div>
-                                  <div style={{ fontSize:11, fontWeight:600, color:job.match.bar_color, marginBottom:6 }}>{job.match.grade} Match</div>
+                                  <div style={{ fontSize: 11, fontWeight: 600, color: job.match.bar_color, marginBottom: 6 }}>{job.match.grade} Match</div>
                                   {job.match.matched_skills?.length > 0 && (
-                                    <div style={{ display:"flex", flexWrap:"wrap", gap:4, marginBottom:5 }}>
-                                      {job.match.matched_skills.slice(0,4).map((s,i)=>(
-                                        <span key={i} style={{ padding:"2px 7px", background:"rgba(5,150,105,.1)", border:"1px solid rgba(5,150,105,.2)", borderRadius:4, fontSize:10, color:"#059669", fontWeight:600 }}>✓ {s}</span>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 5 }}>
+                                      {job.match.matched_skills.slice(0, 4).map((s, i) => (
+                                        <span key={i} style={{ padding: "2px 7px", background: "rgba(5,150,105,.1)", border: "1px solid rgba(5,150,105,.2)", borderRadius: 4, fontSize: 10, color: "#059669", fontWeight: 600 }}>✓ {s}</span>
                                       ))}
                                     </div>
                                   )}
                                   {job.match.missing_skills?.length > 0 && (
-                                    <div style={{ display:"flex", flexWrap:"wrap", gap:4, marginBottom:5 }}>
-                                      {job.match.missing_skills.slice(0,3).map((s,i)=>(
-                                        <span key={i} style={{ padding:"2px 7px", background:"rgba(220,38,38,.06)", border:"1px solid rgba(220,38,38,.15)", borderRadius:4, fontSize:10, color:"#dc2626", fontWeight:600 }}>✗ {s}</span>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 5 }}>
+                                      {job.match.missing_skills.slice(0, 3).map((s, i) => (
+                                        <span key={i} style={{ padding: "2px 7px", background: "rgba(220,38,38,.06)", border: "1px solid rgba(220,38,38,.15)", borderRadius: 4, fontSize: 10, color: "#dc2626", fontWeight: 600 }}>✗ {s}</span>
                                       ))}
                                     </div>
                                   )}
-                                  {job.match.tip && <div style={{ fontSize:10.5, color:"rgba(255,255,255,0.38)", lineHeight:1.5 }}>{job.match.tip}</div>}
+                                  {job.match.tip && <div style={{ fontSize: 10.5, color: "rgba(255,255,255,0.38)", lineHeight: 1.5 }}>{job.match.tip}</div>}
                                 </div>
                               )}
 
-                              <div style={{ display:"flex", gap:8, marginTop:16 }}>
+                              <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
                                 <button onClick={() => sendJobToWhatsApp(job)}
-                                  style={{ flex:"0 0 auto", padding:"10px 14px", background:"rgba(37,211,102,.1)", border:"1px solid rgba(37,211,102,.25)", color:"#25d366", borderRadius:10, fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:5, whiteSpace:"nowrap" }}>
+                                  style={{ flex: "0 0 auto", padding: "10px 14px", background: "rgba(37,211,102,.1)", border: "1px solid rgba(37,211,102,.25)", color: "#25d366", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
                                   📲 WhatsApp
                                 </button>
                                 <a href={job.apply_link} target="_blank" rel="noreferrer" className="apply-btn"
-                                  style={{ flex:1, display:"block", textAlign:"center", padding:"10px", background:"var(--teal)", color:"white", borderRadius:10, fontSize:13, fontWeight:700, fontFamily:"Plus Jakarta Sans, system-ui, sans-serif" }}>
+                                  style={{ flex: 1, display: "block", textAlign: "center", padding: "10px", background: "var(--teal)", color: "white", borderRadius: 10, fontSize: 13, fontWeight: 700, fontFamily: "Plus Jakarta Sans, system-ui, sans-serif" }}>
                                   Apply Now →
                                 </a>
                               </div>
@@ -657,7 +716,7 @@ export default function App() {
 
             {/* ══ ATS RESUME MAKER ══ */}
             {mode === "ats" && <ResumeMaker />}
-                {mode === "interview" && <InterviewPrep />}
+            {mode === "interview" && <InterviewPrep />}
             {mode === "users" && <UserManagement currentUser={user} />}
             {mode === "linkedin" && <LinkedinAnalyzer />}
             {mode === "portfolio" && <PortfolioGenerator />}
