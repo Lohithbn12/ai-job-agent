@@ -18,6 +18,8 @@ import InterviewPrep from "./InterviewPrep";
 import UserManagement from "./UserManagement";
 import LinkedinAnalyzer from "./components/LinkedinAnalyzer";
 import PortfolioGenerator from "./PortfolioGenerator";
+import StockPredictor from "./StockPredictor";
+
 
 // ── Live Clock component ──────────────────────────────────────────────────────
 function LiveClock() {
@@ -202,6 +204,8 @@ export default function App() {
     { key: "users",     icon: "👥", label: "User Management", sub: "Roles · Permissions · Departments" },
     { key: "linkedin",  icon: "🔗", label: "LinkedIn Analyzer",sub: "Optimize your profile",},
     { key: "portfolio", icon: "🌐", label: "Portfolio Generator", sub: "Turn resume → website" },
+    { key: "stocks", icon: "📈", label: "Stock Predictor" }
+
   ];
 
   // Filter nav based on user level + page_permissions
@@ -657,7 +661,7 @@ export default function App() {
             {mode === "users" && <UserManagement currentUser={user} />}
             {mode === "linkedin" && <LinkedinAnalyzer />}
             {mode === "portfolio" && <PortfolioGenerator />}
-
+            {mode === "stocks" && <StockPredictor />}
           </main>
         </div>
       </div>
