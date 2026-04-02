@@ -44,13 +44,21 @@ async function requireAuth(req, res, next) {
       return res.status(401).json({ detail: "User not found" });
     }
 
+    await User.findByIdAndUpdate(user._id, {
+  last_active: new Date(),
+  is_online: true
+});
+
     // 4. Attach safe user object to request
     req.user = {
-      id:         user._id.toString(),
-      name:       user.name,
-      email:      user.email,
-      created_at: user.created_at,
-    };
+  id: user._id.toString(),
+  name: user.name,
+  email: user.email,
+  level: user.level,
+  department: user.department,
+  page_permissions: user.page_permissions,
+  created_at: user.created_at,
+};
 
     next();
 

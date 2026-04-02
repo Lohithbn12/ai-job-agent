@@ -115,6 +115,8 @@ router.post("/login", async (req, res) => {
 
   // 3. Update last_login
   user.last_login = new Date();
+  user.last_active = new Date();
+  user.is_online = true;
   await user.save();
 
   // 4. Issue token
@@ -139,10 +141,15 @@ router.get("/me", requireAuth, (req, res) => {
 
 // ── POST /auth/logout ─────────────────────────────────────────────────────────
 
-router.post("/logout", (_req, res) => {
-  // Stateless JWT — client just deletes the token locally.
-  // Endpoint kept for API completeness / future token blacklisting.
-  return res.json({ message: "Logged out successfully" });
+router.post("/logout", requireAuth, async (req, res) => {
+  await User.findByIdAndUpdate(req.user.id, {
+    is_online: false,
+     last_active: new Date()
+  });
+
+  return res.json({
+    message: "Logged out successfully"
+  });
 });
 
 
@@ -207,4 +214,22 @@ router.put("/users/:id", requireAuth, async (req, res) => {
   return res.json({ message: "User updated.", user: updated.toSafeObject() });
 });
 
+router.get("/stats/users", requireAuth, async (req, res) => {
+  const totalUsers = await User.countDocuments();
+
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+  const onlineUsers = await User.find({
+    is_online: true,
+    last_active: { $gte: fiveMinutesAgo }
+  }).select("name email last_active");
+
+  return res.json({
+    total_users: totalUsers,
+    online_count: onlineUsers.length,
+    online_users: onlineUsers
+  });
+});
+
 module.exports = router;
+

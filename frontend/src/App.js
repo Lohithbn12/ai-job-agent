@@ -41,9 +41,26 @@ function LiveClock() {
 export default function App() {
   // ── Auth state (must come before ALL other hooks) ────────────────────────
   const [authPage, setAuthPage] = useState("login");
-  const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("js_user")) || null; } catch { return null; }
-  });
+  const [user, setUser] = useState(null);           // always start logged-out
+  const [sessionChecked, setSessionChecked] = useState(false);
+
+  // ── Verify stored token on every fresh load ──────────────────────────────
+  // Never auto-restore from localStorage alone; confirm with the backend so
+  // an expired / revoked token never bypasses the login page.
+  useEffect(() => {
+    const token = localStorage.getItem("js_token");
+    if (!token) { setSessionChecked(true); return; }
+
+    axios.get(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => {
+        setUser(res.data);          // token still valid — restore silently
+      })
+      .catch(() => {
+        localStorage.removeItem("js_token");   // expired / revoked
+        localStorage.removeItem("js_user");
+      })
+      .finally(() => setSessionChecked(true));
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── App state (always declared, regardless of auth) ───────────────────────
   const [mode, setMode] = useState("home");
@@ -78,6 +95,11 @@ export default function App() {
   const [courseStatus, setCourseStatus] = useState("");
   const [filterPlatform, setFilterPlatform] = useState("all");
   const [sortCourses, setSortCourses] = useState("platform");
+  const [userStats, setUserStats] = useState({
+  total_users: 0,
+  online_count: 0,
+  online_users: []
+});
 
   /* Handlers */
   const handleUpload = async () => {
@@ -159,6 +181,22 @@ export default function App() {
     finally { setCourseLoading(false); }
   };
 
+  const fetchUserStats = async () => {
+  try {
+    const token = localStorage.getItem("js_token");
+
+    const res = await axios.get(`${API}/auth/stats/users`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    setUserStats(res.data);
+  } catch (err) {
+    console.log("User stats fetch failed", err);
+  }
+};
+
   const toggleExp = (v) => setExps((p) => p.includes(v) ? p.filter((e) => e !== v) : [...p, v]);
   const toggleSource = (s) => setSources((p) => p.includes(s) ? p.filter((x) => x !== s) : [...p, s]);
   const addLocation = () => setLocations((p) => [...p, { city: "", country: "" }]);
@@ -166,6 +204,18 @@ export default function App() {
   const updateLocation = (i, f, v) => setLocations((p) => p.map((l, idx) => idx === i ? { ...l, [f]: v } : l));
   const addRole = () => { const r = newRole.trim(); if (r && !roles.includes(r)) setRoles((p) => [...p, r]); setNewRole(""); };
   const addTopSkill = () => { const s = newTopSkill.trim(); if (s && !topSkills.includes(s)) setTopSkills((p) => [...p, s]); setNewTopSkill(""); };
+
+  useEffect(() => {
+  if (!user) return;
+
+  fetchUserStats();
+
+  const interval = setInterval(() => {
+    fetchUserStats();
+  }, 30000);
+
+  return () => clearInterval(interval);
+}, [user]);
 
   const visibleJobs = (filterSource === "all" ? jobs : jobs.filter((j) => j.source?.toLowerCase() === filterSource))
     .slice().sort((a, b) => (a.exp_mismatch ? 1 : 0) - (b.exp_mismatch ? 1 : 0));
@@ -228,6 +278,25 @@ export default function App() {
     localStorage.removeItem("js_token");
     setUser(null);
   };
+
+  // While we're verifying the stored token, show a neutral loading screen
+  // so the user never briefly sees the main app before being bounced to login.
+  if (!sessionChecked) {
+    return (
+      <>
+        <style dangerouslySetInnerHTML={{ __html: GLOBAL_CSS }} />
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          minHeight: "100vh", background: "#020617", flexDirection: "column", gap: 16
+        }}>
+          <div style={{ fontSize: 32 }}>⚡</div>
+          <div style={{ fontSize: 14, color: "rgba(255,255,255,.4)", letterSpacing: ".5px" }}>
+            Loading…
+          </div>
+        </div>
+      </>
+    );
+  }
 
   if (!user) {
     return (
@@ -367,6 +436,7 @@ export default function App() {
                   <p style={{ color: "rgba(255,255,255,0.45)" }}>
                     Your AI Career Dashboard
                   </p>
+
                 </div>
 
                 <div style={{
@@ -717,7 +787,7 @@ export default function App() {
             {/* ══ ATS RESUME MAKER ══ */}
             {mode === "ats" && <ResumeMaker />}
             {mode === "interview" && <InterviewPrep />}
-            {mode === "users" && <UserManagement currentUser={user} />}
+            {mode === "users" && user?.level === 0 && <UserManagement currentUser={user} />}
             {mode === "linkedin" && <LinkedinAnalyzer />}
             {mode === "portfolio" && <PortfolioGenerator />}
             {mode === "stocks" && <StockPredictor />}
