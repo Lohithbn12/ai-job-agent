@@ -33,10 +33,11 @@ async function connectDB() {
   }
 
   try {
+    const isLocal = uri.includes('localhost') || uri.includes('127.0.0.1');
     await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS:          45000,
-      tls:                      true,
+      tls:                      !isLocal,
       tlsInsecure:              true,   // fixes Windows OpenSSL TLS issue
     });
 

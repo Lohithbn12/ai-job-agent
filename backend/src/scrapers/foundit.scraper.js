@@ -69,36 +69,22 @@ async function collectFounditJobs(keywords, experienceLevel = "0-1", location = 
               const text = (sel) => el.querySelector(sel)?.textContent?.trim() || "";
 
               // Title
-              const title = text(
-                ".jobTitle, [class*='jobTitle'], h3, h2, a[class*='title'], [class*='title']"
-              );
+              const title = text(".jobTitle");
 
               // Company
-              const company = text(".companyName, [class*='company'], [class*='employer']");
+              const company = text(".companyName p");
 
               // Location
-              const loc = text(".location, [class*='location'], [class*='city']");
+              const loc = text(".details.location");
 
               // Salary
               const salary = text(".salary, [class*='salary'], [class*='ctc']");
 
               // Experience text on card
-              const expText = text(".experience, [class*='experience'], [class*='exp']");
+              const expText = text(".experienceSalary .details");
 
-              // Link
-              const linkSelectors = [
-                "a[href*='/job-detail']",
-                "a[href*='foundit.in']",
-                "a",
-              ];
-              let link = "";
-              for (const sel of linkSelectors) {
-                const href = el.querySelector(sel)?.href || "";
-                if (href && (href.includes("foundit.in") || href.startsWith("/"))) {
-                  link = href.startsWith("/") ? `https://www.foundit.in${href}` : href;
-                  break;
-                }
-              }
+              // Link - construct from card id
+              const link = el.id ? `https://www.foundit.in/job-detail/${el.id}` : "";
 
               const snippet = el.textContent.toLowerCase();
               return { title, company, loc, salary, expText, link, snippet };

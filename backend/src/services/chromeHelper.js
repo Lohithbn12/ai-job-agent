@@ -53,23 +53,27 @@ const USER_AGENT =
   "AppleWebKit/537.36 (KHTML, like Gecko) " +
   "Chrome/124.0.0.0 Safari/537.36";
 
+const VIEWPORT = {
+  width: 1920,
+  height: 1080,
+  deviceScaleFactor: 1,
+  isMobile: false,
+  hasTouch: false,
+};
+
 // ── Anti-bot script injected into every new page ──────────────────────────────
 const ANTI_BOT_SCRIPT = `
-  // Hide webdriver flag
+  // Hide webdriver flag only
   Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
 
-  // Spoof plugins length
-  Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
-
-  // Spoof languages
-  Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
-
-  // Override permissions query
-  const originalQuery = window.navigator.permissions.query;
-  window.navigator.permissions.query = (parameters) =>
-    parameters.name === 'notifications'
-      ? Promise.resolve({ state: Notification.permission })
-      : originalQuery(parameters);
+  // Override permissions query safely when available
+  const originalQuery = window.navigator.permissions?.query?.bind(window.navigator.permissions);
+  if (originalQuery) {
+    window.navigator.permissions.query = (parameters) =>
+      parameters.name === 'notifications'
+        ? Promise.resolve({ state: Notification.permission })
+        : originalQuery(parameters);
+  }
 `;
 
 
@@ -121,20 +125,30 @@ async function makeContext(browser) {
  * @param {import('puppeteer').BrowserContext} context
  * @returns {Promise<import('puppeteer').Page>}
  */
-async function makePage(context) {
+async function makePage(context, options = {}) {
   const page = await context.newPage();
 
   // Set realistic User-Agent
   await page.setUserAgent(USER_AGENT);
 
-  // Extra headers that real Chrome sends
+  // Set viewport and realistic browser headers.
+  await page.setViewport(VIEWPORT);
   await page.setExtraHTTPHeaders({
-    "Accept-Language": "en-US,en;q=0.9",
-    "Accept":          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language":       "en-US,en;q=0.9",
+    "Accept":                "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Site":        "none",
+    "Sec-Fetch-Mode":        "navigate",
+    "Sec-Fetch-Dest":        "document",
+    "Sec-CH-UA":             '"Chromium";v="124", "Google Chrome";v="124", "Not:A-Brand";v="99"',
+    "Sec-CH-UA-Mobile":      "?0",
+    "Sec-CH-UA-Platform":    '"Windows"',
   });
 
-  // Inject anti-bot patches before ANY page JS runs
-  await page.evaluateOnNewDocument(ANTI_BOT_SCRIPT);
+  // Inject anti-bot patches before ANY page JS runs, unless explicitly skipped.
+  if (!options.skipAntiBot) {
+    await page.evaluateOnNewDocument(ANTI_BOT_SCRIPT);
+  }
 
   // Default navigation timeout: 30s (same feel as Python's implicit waits)
   page.setDefaultNavigationTimeout(30_000);
@@ -187,9 +201,9 @@ async function withBrowser(fn) {
  *   });
  * });
  */
-async function withPage(browser, fn) {
+async function withPage(browser, fn, options = {}) {
   const context = await makeContext(browser);
-  const page    = await makePage(context);
+  const page    = await makePage(context, options);
   try {
     return await fn(page);
   } finally {

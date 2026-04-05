@@ -238,4 +238,41 @@ router.delete("/users/:id", requireAuth, requireAdmin, async (req, res) => {
 });
 
 
+// ── GET /auth/stats/users ─────────────────────────────────────────────────────
+// Alias for /auth/users/stats — frontend calls this path
+router.get("/stats/users", requireAuth, requireAdmin, async (_req, res) => {
+  const allUsers = await User.find({}).lean();
+  const onlineWindow = new Date(Date.now() - ONLINE_THRESHOLD_MS);
+
+  const levelMap = {};
+  for (const u of allUsers) {
+    const lvl = u.level ?? 1;
+    if (!levelMap[lvl]) levelMap[lvl] = { level: lvl, count: 0, online: 0 };
+    levelMap[lvl].count++;
+    if (u.last_active && new Date(u.last_active) >= onlineWindow) {
+      levelMap[lvl].online++;
+    }
+  }
+
+  const onlineUsers = allUsers
+    .filter(u => u.last_active && new Date(u.last_active) >= onlineWindow)
+    .sort((a, b) => new Date(b.last_active) - new Date(a.last_active))
+    .map(u => ({
+      id:          u._id.toString(),
+      name:        u.name,
+      email:       u.email,
+      level:       u.level ?? 1,
+      department:  u.department || "member",
+      last_active: u.last_active,
+      last_login:  u.last_login,
+    }));
+
+  return res.json({
+    total_users:  allUsers.length,
+    online_count: onlineUsers.length,
+    by_level:     Object.values(levelMap).sort((a, b) => a.level - b.level),
+    online_users: onlineUsers,
+  });
+});
+
 module.exports = router;

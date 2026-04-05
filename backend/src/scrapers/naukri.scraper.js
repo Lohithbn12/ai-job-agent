@@ -44,13 +44,52 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
       console.log(`[Naukri] URL: ${searchUrl}`);
 
       const keywordJobs = await withPage(browser, async (page) => {
-        await page.goto(searchUrl, { waitUntil: "domcontentloaded" });
-        await sleep(2000, 3000);
+        const referers = [
+          "https://www.google.com/",
+          "https://www.bing.com/",
+          "https://search.yahoo.com/",
+          "https://www.duckduckgo.com/",
+        ];
+        await page.setExtraHTTPHeaders({
+          referer: referers[Math.floor(Math.random() * referers.length)],
+          "Sec-CH-UA": '"Chromium";v="124", "Google Chrome";v="124", "Not:A-Brand";v="99"',
+          "Sec-CH-UA-Mobile": "?0",
+          "Sec-CH-UA-Platform": '"Windows"',
+          "Upgrade-Insecure-Requests": "1",
+        });
+        await page.goto(searchUrl, { waitUntil: "networkidle2", timeout: 45000 });
+        await page.waitForSelector("[data-job-id], div[class*='job']", { timeout: 15000 }).catch(() => {});
+        await sleep(4000, 6000);
 
-        console.log(`  Page: ${await page.title()}`);
+        const pageTitle = await page.title();
+        const bodyText = await page.evaluate(() => document.body.innerText.toLowerCase());
+        if (/access denied|you don't have permission|forbidden|error/.test(bodyText)) {
+          console.log(`  [Naukri] Blocked by access denied page: ${pageTitle}`);
+          return [];
+        }
+
+        console.log(`  Page: ${pageTitle}`);
 
         // ── Extract cards ──────────────────────────────────────────────────
-        const cards = await page.$$(".srp-jobtuple-wrapper, article.jobTuple, [data-job-id]");
+        // Try multiple selector patterns (Naukri updates their HTML frequently)
+        let cards = await page.$$(
+          "article[class*='jobCard'], " +
+          "div[class*='jobCard'], " +
+          "div[class*='job'], " +
+          "div.jobTuple, " +
+          ".srp-jobtuple-wrapper, " +
+          "article.jobTuple, " +
+          "[data-job-id], " +
+          "li[class*='job']"
+        );
+        
+        console.log(`  Cards (attempt 1): ${cards.length}`);
+        if (!cards.length) {
+          // Fallback: look for any container with job links
+          cards = await page.$$("article, [class*='srp'], [class*='container'], div.jobTuple");
+          console.log(`  Cards (attempt 2): ${cards.length}`);
+        }
+        
         console.log(`  Cards: ${cards.length}`);
         if (!cards.length) return [];
 
@@ -128,7 +167,7 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
         }
 
         return found;
-      });
+      }, { skipAntiBot: true });
 
       jobs.push(...keywordJobs);
       await sleep(1000, 2000);

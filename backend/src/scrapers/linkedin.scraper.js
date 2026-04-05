@@ -73,8 +73,14 @@ async function collectLinkedinJobs(keywords, experienceLevel = "0-1", location =
         }
 
         // ── Extract cards ──────────────────────────────────────────────────
-        const cards = await page.$$(
-          ".jobs-search__results-list li, [data-occludable-job-id], .base-card, ul.jobs-search__results-list > li"
+        let cards = await page.$$(
+          ".jobs-search__results-list li, " +
+          "[data-occludable-job-id], " +
+          ".base-card, " +
+          "ul.jobs-search__results-list > li, " +
+          ".job-card-container, " +
+          "div[class*='job'][class*='card'], " +
+          "article[data-job-id]"
         );
         console.log(`  Cards: ${cards.length}`);
         if (!cards.length) {

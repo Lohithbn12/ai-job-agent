@@ -10,35 +10,37 @@ require("dotenv").config();
 require("express-async-errors");
 
 const express = require("express");
-const cors    = require("cors");
-const fs      = require("fs");
+const cors = require("cors");
+const fs = require("fs");
 
 const connectDB = require("./db/mongo");
 
-const authRoutes      = require("./auth/auth.routes");
-const resumeRoutes    = require("./routes/resume.routes");
-const jobsRoutes      = require("./routes/jobs.routes");
-const coursesRoutes   = require("./routes/courses.routes");
+const authRoutes = require("./auth/auth.routes");
+const resumeRoutes = require("./routes/resume.routes");
+const jobsRoutes = require("./routes/jobs.routes");
+const coursesRoutes = require("./routes/courses.routes");
 const interviewRoutes = require("./routes/interview.routes");
-const atsRoutes       = require("./routes/ats.routes");
-const linkedinRoutes  = require("./routes/linkedin.routes");
-const linkedinPdfRoutes = require("./routes/linkedin_pdf_route");  // ← NEW
+const atsRoutes = require("./routes/ats.routes");
+const linkedinRoutes = require("./routes/linkedin.routes");
+const linkedinPdfRoutes = require("./routes/linkedin_pdf_route");
 const roadmapRoutes = require("./routes/roadmap.routes");
 const portfolioRoutes = require("./routes/portfolio.routes");
 const stockRoutes = require("./routes/stock.routes");
+const jobAlertRoutes = require("./routes/jobAlert.routes");
+const notificationRoutes = require("./routes/notification.routes");
+const startJobAlertScheduler = require("./services/jobAlertScheduler");
 
-
-const app  = express();
+const app = express();
 const PORT = process.env.PORT || 8000;
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "uploads";
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 app.use(cors({
-  origin:         "*",
-  methods:        ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials:    false,
+  credentials: false,
 }));
 
 app.use(express.json({ limit: "10mb" }));
@@ -50,25 +52,27 @@ app.use((req, _res, next) => {
 });
 
 app.get("/", (_req, res) => {
-  res.json({ name: "JobScan API", version: "2.1.0", status: "running", stack: "Node.js / Express" });
+  res.json({ name: "JobScan API", version: "2.2.0", status: "running", stack: "Node.js / Express" });
 });
 
-app.use("/auth",     authRoutes);
-app.use("/",         resumeRoutes);
-app.use("/",         jobsRoutes);
-app.use("/",         coursesRoutes);
-app.use("/",         interviewRoutes);
-app.use("/ats",      atsRoutes);
+app.use("/auth", authRoutes);
+app.use("/", resumeRoutes);
+app.use("/", jobsRoutes);
+app.use("/", coursesRoutes);
+app.use("/", interviewRoutes);
+app.use("/ats", atsRoutes);
 app.use("/linkedin", linkedinRoutes);
-app.use("/linkedin", linkedinPdfRoutes);   // ← NEW  →  POST /linkedin/parse-pdf
+app.use("/linkedin", linkedinPdfRoutes);
 app.use("/roadmap", roadmapRoutes);
 app.use("/portfolio", portfolioRoutes);
 app.use("/stock", stockRoutes);
+app.use("/", jobAlertRoutes);
+app.use("/", notificationRoutes);
 
 app.use((err, req, res, _next) => {
-  if (err.code === "LIMIT_FILE_SIZE")      return res.status(413).json({ detail: `File too large. Max size is ${process.env.MAX_FILE_SIZE_MB || 10}MB.` });
-  if (err.message?.includes("Only PDF"))   return res.status(400).json({ detail: err.message });
-  if (err.status === 401)                  return res.status(401).json({ detail: err.message });
+  if (err.code === "LIMIT_FILE_SIZE") return res.status(413).json({ detail: `File too large. Max size is ${process.env.MAX_FILE_SIZE_MB || 10}MB.` });
+  if (err.message?.includes("Only PDF")) return res.status(400).json({ detail: err.message });
+  if (err.status === 401) return res.status(401).json({ detail: err.message });
   if (err.name === "ValidationError") {
     const messages = Object.values(err.errors).map((e) => e.message);
     return res.status(400).json({ detail: messages.join(" ") });
@@ -80,10 +84,10 @@ app.use((err, req, res, _next) => {
 
 async function start() {
   await connectDB();
-
+  startJobAlertScheduler();
   app.listen(PORT, () => {
     console.log("─────────────────────────────────────────────");
-    console.log(`  JobScan API  v2.1.0  (Node.js / Express)`);
+    console.log(`  JobScan API  v2.2.0  (Node.js / Express)`);
     console.log(`  http://localhost:${PORT}`);
     console.log("─────────────────────────────────────────────");
     console.log("  Endpoints:");
@@ -98,7 +102,16 @@ async function start() {
     console.log(`  POST /ats/score/`);
     console.log(`  POST /ats/import-resume/`);
     console.log(`  POST /linkedin/analyze`);
-    console.log(`  POST /linkedin/parse-pdf`);       // ← NEW
+    console.log(`  POST /linkedin/parse-pdf`);
+    console.log(`  POST /job-alert/create`);
+    console.log(`  GET  /job-alert/my-alerts`);
+    console.log(`  DELETE /job-alert/:id`);
+    console.log(`  PATCH /job-alert/:id/toggle`);
+    console.log(`  GET  /notifications/count`);
+    console.log(`  GET  /notifications/list`);
+    console.log(`  PATCH /notifications/read/:id`);
+    console.log(`  PATCH /notifications/clear`);
+    console.log(`  DELETE /notifications/delete/:id`);
     console.log("─────────────────────────────────────────────");
   });
 }

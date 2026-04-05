@@ -6,11 +6,36 @@ import React, { useState, useRef } from "react";
 import axios from "axios";
 import { API } from "./constants";
 
+// ── colours ───────────────────────────────────────────────────────────────────
+const C = {
+  ocean:      "#1e6fd4",
+  oceanDim:   "#1558b0",
+  oceanSoft:  "rgba(30,111,212,0.07)",
+  oceanBorder:"rgba(30,111,212,0.18)",
+  teal:       "#0891b2",
+  tealSoft:   "rgba(8,145,178,0.08)",
+  tealBorder: "rgba(8,145,178,0.22)",
+  navy:       "#0a1628",
+  navyCard:   "#0f1f3d",
+  white:      "#ffffff",
+  bg:         "#f0f4f9",
+  text:       "#0f172a",
+  text2:      "#475569",
+  text3:      "#94a3b8",
+  border:     "rgba(30,111,212,0.12)",
+  green:      "#16a34a",
+  greenSoft:  "rgba(22,163,74,0.08)",
+  greenBorder:"rgba(22,163,74,0.22)",
+  red:        "#dc2626",
+  redSoft:    "rgba(220,38,38,0.08)",
+  redBorder:  "rgba(220,38,38,0.2)",
+};
+
 // ── tiny helpers ──────────────────────────────────────────────────────────────
 const Spinner = () => (
   <span style={{
     display: "inline-block", width: 14, height: 14,
-    border: "2px solid rgba(255,255,255,0.2)", borderTopColor: "#5eead4",
+    border: `2px solid ${C.oceanSoft}`, borderTopColor: C.ocean,
     borderRadius: "50%", animation: "spin 0.7s linear infinite",
     verticalAlign: "middle",
   }} />
@@ -22,38 +47,37 @@ const Step = ({ n, label, active, done }) => (
       width: 28, height: 28, borderRadius: "50%", display: "flex",
       alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700,
       flexShrink: 0,
-      background: done ? "#22c55e" : active ? "var(--teal)" : "rgba(255,255,255,0.08)",
-      color: (done || active) ? "white" : "rgba(255,255,255,0.35)",
-      boxShadow: active ? "0 0 0 4px rgba(13,148,136,.18)" : "none",
+      background: done ? C.green : active ? C.ocean : "rgba(30,111,212,0.1)",
+      color: (done || active) ? "white" : C.text3,
+      boxShadow: active ? `0 0 0 4px ${C.oceanSoft}` : "none",
       transition: "all .3s",
     }}>
       {done ? "✓" : n}
     </div>
     <span style={{
       fontSize: 13, fontWeight: active ? 600 : 400,
-      color: done ? "#4ade80" : active ? "#5eead4" : "rgba(255,255,255,0.35)",
+      color: done ? C.green : active ? C.ocean : C.text3,
     }}>{label}</span>
   </div>
 );
 
-// ── main component ─────────────────────────────────────────────────────────────
+// ── main component ────────────────────────────────────────────────────────────
 export default function PortfolioGenerator() {
-  const [file, setFile]           = useState(null);
-  const [dragging, setDragging]   = useState(false);
-  const [step, setStep]           = useState(1);   // 1=upload  2=generating  3=done
-  const [status, setStatus]       = useState("");
+  const [file, setFile]                   = useState(null);
+  const [dragging, setDragging]           = useState(false);
+  const [step, setStep]                   = useState(1);
+  const [status, setStatus]               = useState("");
   const [portfolioHtml, setPortfolioHtml] = useState("");
-  const [copied, setCopied]       = useState(false);
-  const [theme, setTheme]         = useState("dark");
-  const inputRef                  = useRef();
-  const iframeRef                 = useRef();
+  const [copied, setCopied]               = useState(false);
+  const [theme, setTheme]                 = useState("dark");
+  const inputRef                          = useRef();
+  const iframeRef                         = useRef();
 
-  // ── file drop / pick ─────────────────────────────────────────────────────────
+  // ── file drop / pick ──────────────────────────────────────────────────────
   const pickFile = (f) => {
     if (!f) return;
     if (f.type !== "application/pdf") { setStatus("Only PDF files are supported."); return; }
-    setFile(f);
-    setStatus("");
+    setFile(f); setStatus("");
   };
 
   const onDrop = (e) => {
@@ -61,7 +85,7 @@ export default function PortfolioGenerator() {
     pickFile(e.dataTransfer.files[0]);
   };
 
-  // ── generate ──────────────────────────────────────────────────────────────────
+  // ── generate ──────────────────────────────────────────────────────────────
   const handleGenerate = async () => {
     if (!file) { setStatus("Please upload a PDF resume first."); return; }
     try {
@@ -81,7 +105,7 @@ export default function PortfolioGenerator() {
     }
   };
 
-  // ── copy HTML ─────────────────────────────────────────────────────────────────
+  // ── copy HTML ─────────────────────────────────────────────────────────────
   const copyHtml = () => {
     navigator.clipboard.writeText(portfolioHtml).then(() => {
       setCopied(true);
@@ -89,7 +113,7 @@ export default function PortfolioGenerator() {
     });
   };
 
-  // ── download HTML ─────────────────────────────────────────────────────────────
+  // ── download HTML ─────────────────────────────────────────────────────────
   const downloadHtml = () => {
     const blob = new Blob([portfolioHtml], { type: "text/html" });
     const url  = URL.createObjectURL(blob);
@@ -98,49 +122,51 @@ export default function PortfolioGenerator() {
     URL.revokeObjectURL(url);
   };
 
-  // ── reset ─────────────────────────────────────────────────────────────────────
+  // ── reset ─────────────────────────────────────────────────────────────────
   const reset = () => {
     setFile(null); setStep(1); setStatus(""); setPortfolioHtml(""); setCopied(false);
   };
 
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="fade-up" style={{ maxWidth: 960, margin: "0 auto" }}>
 
       {/* ── header ── */}
       <div style={{ marginBottom: 36 }}>
         <h1 style={{
-          fontFamily: "Plus Jakarta Sans, system-ui, sans-serif",
-          fontSize: 36, fontWeight: 800,
-          color: "rgba(255,255,255,0.92)", lineHeight: 1.1,
-          letterSpacing: "-1px", marginBottom: 10,
+          fontFamily: "'Outfit', sans-serif",
+          fontSize: 34, fontWeight: 800,
+          color: C.text, lineHeight: 1.15,
+          letterSpacing: "-0.8px", marginBottom: 10,
         }}>
           Portfolio{" "}
-          <span style={{ background: "var(--teal)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-            Generator
-          </span>
+          <span style={{ color: C.ocean }}>Generator</span>
         </h1>
-        <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, lineHeight: 1.7 }}>
+        <p style={{ color: C.text2, fontSize: 14, lineHeight: 1.7 }}>
           Upload your PDF resume and get a beautiful, deployable portfolio website in seconds.
         </p>
       </div>
 
       {/* ── step indicator ── */}
       <div style={{
-        display: "flex", gap: 24, marginBottom: 36, padding: "16px 20px",
-        background: "#0c1a3d", borderRadius: 14, border: "1.5px solid rgba(255,255,255,0.07)",
-        flexWrap: "wrap",
+        display: "flex", gap: 24, marginBottom: 32,
+        padding: "16px 22px",
+        background: C.white,
+        borderRadius: 14,
+        border: `1px solid ${C.border}`,
+        boxShadow: `0 1px 4px rgba(30,111,212,0.06)`,
+        flexWrap: "wrap", alignItems: "center",
       }}>
-        <Step n={1} label="Upload Resume" active={step === 1} done={step > 1} />
-        <div style={{ width: 32, height: 1, background: "rgba(255,255,255,0.08)", alignSelf: "center" }} />
+        <Step n={1} label="Upload Resume"        active={step === 1} done={step > 1} />
+        <div style={{ flex: 1, height: 1, background: C.border, minWidth: 20 }} />
         <Step n={2} label="AI Generates Portfolio" active={step === 2} done={step > 2} />
-        <div style={{ width: 32, height: 1, background: "rgba(255,255,255,0.08)", alignSelf: "center" }} />
-        <Step n={3} label="Preview & Download" active={step === 3} done={false} />
+        <div style={{ flex: 1, height: 1, background: C.border, minWidth: 20 }} />
+        <Step n={3} label="Preview & Download"   active={step === 3} done={false} />
       </div>
 
       {/* ══ STEP 1 — Upload ══ */}
       {step === 1 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
           {/* drop zone */}
           <div
@@ -149,10 +175,11 @@ export default function PortfolioGenerator() {
             onDragLeave={() => setDragging(false)}
             onDrop={onDrop}
             style={{
-              border: `2px dashed ${dragging ? "var(--teal)" : file ? "#22c55e" : "rgba(255,255,255,0.12)"}`,
-              borderRadius: 18, padding: "52px 32px", textAlign: "center",
+              border: `2px dashed ${dragging ? C.ocean : file ? C.green : C.oceanBorder}`,
+              borderRadius: 16, padding: "52px 32px", textAlign: "center",
               cursor: "pointer", transition: "all .2s",
-              background: dragging ? "rgba(13,148,136,0.04)" : file ? "rgba(34,197,94,0.04)" : "#0a1628",
+              background: dragging ? C.oceanSoft : file ? C.greenSoft : C.white,
+              boxShadow: `0 1px 4px rgba(30,111,212,0.06)`,
             }}
           >
             <input ref={inputRef} type="file" accept=".pdf" style={{ display: "none" }}
@@ -160,17 +187,19 @@ export default function PortfolioGenerator() {
             <div style={{ fontSize: 44, marginBottom: 14 }}>{file ? "✅" : "📄"}</div>
             {file ? (
               <>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#4ade80", fontFamily: "Plus Jakarta Sans, system-ui, sans-serif" }}>{file.name}</div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", marginTop: 6 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.green, fontFamily: "'Outfit', sans-serif" }}>
+                  {file.name}
+                </div>
+                <div style={{ fontSize: 13, color: C.text3, marginTop: 6 }}>
                   {(file.size / 1024).toFixed(1)} KB · Click to change
                 </div>
               </>
             ) : (
               <>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "rgba(255,255,255,0.75)", fontFamily: "Plus Jakarta Sans, system-ui, sans-serif" }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.text, fontFamily: "'Outfit', sans-serif" }}>
                   Drop your PDF resume here
                 </div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", marginTop: 6 }}>
+                <div style={{ fontSize: 13, color: C.text3, marginTop: 6 }}>
                   or click to browse · PDF only
                 </div>
               </>
@@ -179,46 +208,63 @@ export default function PortfolioGenerator() {
 
           {/* theme picker */}
           <div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", marginBottom: 12 }}>
+            <div style={{
+              fontSize: 10.5, fontWeight: 700, textTransform: "uppercase",
+              letterSpacing: "1.1px", color: C.text3,
+              fontFamily: "'JetBrains Mono', monospace", marginBottom: 12,
+            }}>
               Portfolio Theme
             </div>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
               {[
-                { key: "dark",    label: "🌙 Dark Minimal",    desc: "Sleek dark bg, teal accents" },
-                { key: "light",   label: "☀️ Clean Light",     desc: "White, professional, sharp" },
-                { key: "gradient",label: "🌊 Gradient Glass",  desc: "Modern mesh gradient look" },
+                { key: "dark",     label: "🌙 Dark Minimal",    desc: "Sleek dark for tech accounts" },
+                { key: "light",    label: "☀️ Clean Light",     desc: "White, professional, sharp" },
+                { key: "gradient", label: "🌊 Gradient Glass",  desc: "Modern mesh gradient look" },
               ].map((t) => (
                 <button key={t.key} onClick={() => setTheme(t.key)} style={{
-                  padding: "12px 18px", borderRadius: 12, cursor: "pointer", textAlign: "left",
-                  background: theme === t.key ? "rgba(13,148,136,.14)" : "#0c1a3d",
-                  border: `1.5px solid ${theme === t.key ? "rgba(13,148,136,.5)" : "rgba(255,255,255,0.07)"}`,
+                  padding: "12px 16px", borderRadius: 12, cursor: "pointer", textAlign: "left",
+                  background: theme === t.key ? C.oceanSoft : C.white,
+                  border: `1.5px solid ${theme === t.key ? C.ocean : C.border}`,
                   transition: "all .15s",
+                  boxShadow: theme === t.key ? `0 2px 12px rgba(30,111,212,0.12)` : "none",
                 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: theme === t.key ? "#5eead4" : "rgba(255,255,255,0.75)", fontFamily: "Plus Jakarta Sans, system-ui, sans-serif" }}>
+                  <div style={{
+                    fontSize: 13, fontWeight: 700,
+                    color: theme === t.key ? C.ocean : C.text,
+                    fontFamily: "'Outfit', sans-serif",
+                  }}>
                     {t.label}
                   </div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 3 }}>{t.desc}</div>
+                  <div style={{ fontSize: 11, color: C.text3, marginTop: 3 }}>{t.desc}</div>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* status */}
+          {/* status / error */}
           {status && (
-            <div style={{ padding: "12px 16px", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 13 }}>
+            <div style={{
+              padding: "12px 16px", borderRadius: 10,
+              background: C.redSoft, border: `1px solid ${C.redBorder}`,
+              color: C.red, fontSize: 13,
+            }}>
               ⚠️ {status}
             </div>
           )}
 
           {/* generate btn */}
           <button onClick={handleGenerate} disabled={!file} style={{
-            padding: "16px 32px", background: file ? "var(--teal)" : "rgba(255,255,255,0.06)",
-            border: "none", borderRadius: 14, fontSize: 15, fontWeight: 700,
-            color: file ? "white" : "rgba(255,255,255,0.25)", cursor: file ? "pointer" : "not-allowed",
-            fontFamily: "Plus Jakarta Sans, system-ui, sans-serif",
-            display: "flex", alignItems: "center", gap: 10, width: "100%",
-            justifyContent: "center", transition: "all .2s",
-            boxShadow: file ? "0 4px 24px rgba(13,148,136,0.25)" : "none",
+            padding: "15px 32px",
+            background: file ? `linear-gradient(135deg, ${C.ocean}, ${C.oceanDim})` : "rgba(30,111,212,0.06)",
+            border: `1px solid ${file ? C.ocean : C.border}`,
+            borderRadius: 12, fontSize: 15, fontWeight: 700,
+            color: file ? "white" : C.text3,
+            cursor: file ? "pointer" : "not-allowed",
+            fontFamily: "'Outfit', sans-serif",
+            display: "flex", alignItems: "center", gap: 10,
+            width: "100%", justifyContent: "center",
+            transition: "all .2s",
+            boxShadow: file ? `0 4px 20px rgba(30,111,212,0.3)` : "none",
           }}>
             ✨ Generate My Portfolio
           </button>
@@ -230,32 +276,40 @@ export default function PortfolioGenerator() {
         <div style={{
           display: "flex", flexDirection: "column", alignItems: "center",
           justifyContent: "center", padding: "80px 32px", gap: 24,
-          background: "#0a1628", borderRadius: 18, border: "1.5px solid rgba(255,255,255,0.07)",
+          background: C.white, borderRadius: 18,
+          border: `1px solid ${C.border}`,
+          boxShadow: `0 4px 20px rgba(30,111,212,0.08)`,
         }}>
           <div style={{ position: "relative", width: 72, height: 72 }}>
             <div style={{
               position: "absolute", inset: 0, borderRadius: "50%",
-              border: "3px solid rgba(13,148,136,.15)",
+              border: `3px solid ${C.oceanSoft}`,
             }} />
             <div style={{
               position: "absolute", inset: 0, borderRadius: "50%",
-              border: "3px solid transparent", borderTopColor: "#5eead4",
+              border: "3px solid transparent", borderTopColor: C.ocean,
               animation: "spin 0.9s linear infinite",
             }} />
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 }}>🌐</div>
+            <div style={{
+              position: "absolute", inset: 0,
+              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26,
+            }}>🌐</div>
           </div>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "rgba(255,255,255,0.88)", fontFamily: "Plus Jakarta Sans, system-ui, sans-serif", textAlign: "center", marginBottom: 8 }}>
+            <div style={{
+              fontSize: 18, fontWeight: 700, color: C.text,
+              fontFamily: "'Outfit', sans-serif", textAlign: "center", marginBottom: 8,
+            }}>
               Building your portfolio…
             </div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", textAlign: "center" }}>
+            <div style={{ fontSize: 13, color: C.text2, textAlign: "center" }}>
               Parsing resume · Crafting layout · Adding your details
             </div>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             {[0, 1, 2].map(i => (
               <div key={i} style={{
-                width: 7, height: 7, borderRadius: "50%", background: "var(--teal)",
+                width: 7, height: 7, borderRadius: "50%", background: C.ocean,
                 animation: `bounce 1.2s ${i * 0.2}s infinite`,
               }} />
             ))}
@@ -265,41 +319,52 @@ export default function PortfolioGenerator() {
 
       {/* ══ STEP 3 — Preview ══ */}
       {step === 3 && portfolioHtml && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
 
           {/* action bar */}
           <div style={{
             display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
-            padding: "14px 18px", background: "#0c1a3d",
-            borderRadius: 14, border: "1.5px solid rgba(255,255,255,0.07)",
+            padding: "14px 18px",
+            background: C.white,
+            borderRadius: 14,
+            border: `1px solid ${C.border}`,
+            boxShadow: `0 1px 4px rgba(30,111,212,0.06)`,
           }}>
-            <span style={{ fontSize: 13, color: "#4ade80", fontWeight: 700, marginRight: "auto" }}>
+            <span style={{ fontSize: 13, color: C.green, fontWeight: 700, marginRight: "auto" }}>
               ✅ Portfolio ready!
             </span>
 
             <button onClick={copyHtml} style={{
-              padding: "9px 18px", background: copied ? "rgba(34,197,94,.12)" : "rgba(255,255,255,.06)",
-              border: `1px solid ${copied ? "rgba(34,197,94,.3)" : "rgba(255,255,255,0.1)"}`,
+              padding: "9px 18px",
+              background: copied ? C.greenSoft : C.white,
+              border: `1px solid ${copied ? C.greenBorder : C.border}`,
               borderRadius: 10, fontSize: 13, fontWeight: 600,
-              color: copied ? "#4ade80" : "rgba(255,255,255,0.7)", cursor: "pointer",
+              color: copied ? C.green : C.text2,
+              cursor: "pointer",
               display: "flex", alignItems: "center", gap: 6,
+              transition: "all .15s",
             }}>
               {copied ? "✓ Copied!" : "📋 Copy HTML"}
             </button>
 
             <button onClick={downloadHtml} style={{
-              padding: "9px 18px", background: "var(--teal)", border: "none",
-              borderRadius: 10, fontSize: 13, fontWeight: 700,
-              color: "white", cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+              padding: "9px 18px",
+              background: `linear-gradient(135deg, ${C.ocean}, ${C.oceanDim})`,
+              border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700,
+              color: "white", cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 6,
+              boxShadow: `0 4px 14px rgba(30,111,212,0.3)`,
             }}>
               ⬇️ Download HTML
             </button>
 
             <button onClick={reset} style={{
-              padding: "9px 18px", background: "rgba(255,255,255,.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              padding: "9px 18px",
+              background: C.white,
+              border: `1px solid ${C.border}`,
               borderRadius: 10, fontSize: 13, fontWeight: 600,
-              color: "rgba(255,255,255,0.45)", cursor: "pointer",
+              color: C.text2, cursor: "pointer",
+              transition: "all .15s",
             }}>
               ↩ Start Over
             </button>
@@ -307,38 +372,42 @@ export default function PortfolioGenerator() {
 
           {/* deploy hint */}
           <div style={{
-            padding: "12px 18px", background: "rgba(99,102,241,.08)",
-            border: "1px solid rgba(99,102,241,.2)", borderRadius: 12,
-            fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.7,
+            padding: "12px 18px",
+            background: "rgba(30,111,212,0.05)",
+            border: `1px solid rgba(30,111,212,0.15)`,
+            borderRadius: 12, fontSize: 13,
+            color: C.text2, lineHeight: 1.7,
           }}>
-            💡 <strong style={{ color: "rgba(255,255,255,0.75)" }}>Deploy it free:</strong>{" "}
+            💡 <strong style={{ color: C.text }}>Deploy it free:</strong>{" "}
             Download the HTML → drag it into{" "}
-            <a href="https://app.netlify.com/drop" target="_blank" rel="noreferrer" style={{ color: "#818cf8" }}>Netlify Drop</a>,{" "}
-            <a href="https://tiiny.host" target="_blank" rel="noreferrer" style={{ color: "#818cf8" }}>Tiiny.host</a>, or push to a{" "}
-            <a href="https://pages.github.com" target="_blank" rel="noreferrer" style={{ color: "#818cf8" }}>GitHub Pages</a> repo.
+            <a href="https://app.netlify.com/drop" target="_blank" rel="noreferrer" style={{ color: C.ocean, fontWeight: 600 }}>Netlify Drop</a>,{" "}
+            <a href="https://tiiny.host" target="_blank" rel="noreferrer" style={{ color: C.ocean, fontWeight: 600 }}>Tiiny.host</a>, or push to a{" "}
+            <a href="https://pages.github.com" target="_blank" rel="noreferrer" style={{ color: C.ocean, fontWeight: 600 }}>GitHub Pages</a> repo.
           </div>
 
           {/* live preview iframe */}
           <div style={{
             borderRadius: 16, overflow: "hidden",
-            border: "1.5px solid rgba(255,255,255,0.08)",
-            boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
+            border: `1px solid ${C.border}`,
+            boxShadow: `0 8px 40px rgba(30,111,212,0.12)`,
           }}>
             {/* browser chrome bar */}
             <div style={{
-              background: "#0f172a", padding: "10px 16px",
+              background: C.navy, padding: "10px 16px",
               display: "flex", alignItems: "center", gap: 8,
-              borderBottom: "1px solid rgba(255,255,255,0.06)",
+              borderBottom: `1px solid rgba(255,255,255,0.06)`,
             }}>
               <div style={{ display: "flex", gap: 6 }}>
-                {["#ef4444","#f59e0b","#22c55e"].map((c, i) => (
+                {["#ef4444", "#f59e0b", "#22c55e"].map((c, i) => (
                   <div key={i} style={{ width: 10, height: 10, borderRadius: "50%", background: c }} />
                 ))}
               </div>
               <div style={{
-                flex: 1, marginLeft: 8, background: "rgba(255,255,255,0.04)",
+                flex: 1, marginLeft: 8,
+                background: "rgba(255,255,255,0.06)",
                 borderRadius: 6, padding: "4px 12px", fontSize: 12,
-                color: "rgba(255,255,255,0.3)", textAlign: "center",
+                color: "rgba(255,255,255,0.35)", textAlign: "center",
+                fontFamily: "'JetBrains Mono', monospace",
               }}>
                 portfolio.html — preview
               </div>
@@ -354,11 +423,11 @@ export default function PortfolioGenerator() {
         </div>
       )}
 
-      {/* global keyframe additions */}
       <style>{`
+        @keyframes spin   { to { transform: rotate(360deg); } }
         @keyframes bounce {
-          0%, 100% { transform: translateY(0); opacity: .4; }
-          50%       { transform: translateY(-6px); opacity: 1; }
+          0%, 100% { transform: translateY(0);    opacity: .4; }
+          50%       { transform: translateY(-6px); opacity: 1;  }
         }
       `}</style>
     </div>

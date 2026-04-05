@@ -1,168 +1,278 @@
 /**
  * src/routes/stock.routes.js
  *
- * Stock Predictor — Time-Series Statistical Engine
- * Models used:
- *   1. Linear Regression (OLS) on log-prices
- *   2. Double Exponential Smoothing (Holt's method) — trend-aware
- *   3. Simple Moving Average extrapolation
- *   4. Weighted Ensemble of all three
+ * Stock Predictor — Multi-source data fetching
+ * ─────────────────────────────────────────────────────────────────
+ *  Primary:  Yahoo Finance v8 JSON endpoint (no download, no block)
+ *  Fallback: Stooq CSV (free, no auth, works for US + Indian stocks)
+ *  Supports: US stocks (AAPL, TSLA) + Indian stocks (RELIANCE.NS, TCS.NS)
  *
- * Data source: Twelve Data API (free tier — 800 req/day, 8 req/min)
- *   Sign up:    https://twelvedata.com/
- *   Env var:    TWELVE_DATA_API_KEY=your_key_here
- *
- * Install:  npm install axios  (if not already present)
+ * Models: Linear Regression + Holt's Exponential Smoothing + SMA Ensemble
+ * Fixes:  In-memory cache (1hr TTL) + exponential-backoff retry (3x)
  */
 
 "use strict";
 
 const express = require("express");
 const router  = express.Router();
-const axios   = require("axios");
+const https   = require("https");
 
-const TD_KEY  = process.env.TWELVE_DATA_API_KEY || "";
-const TD_BASE = "https://api.twelvedata.com";
+// ─────────────────────────────────────────────────────────────────
+//  In-Memory Cache  (1 hour TTL per symbol)
+// ─────────────────────────────────────────────────────────────────
+const cache     = new Map();
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
-if (!TD_KEY) {
-  console.warn("[stock] TWELVE_DATA_API_KEY not set — add it to your .env file");
+function getCached(key) {
+  const entry = cache.get(key);
+  if (entry && Date.now() - entry.ts < CACHE_TTL) {
+    console.log(`[cache HIT] ${key}`);
+    return entry.data;
+  }
+  return null;
+}
+function setCache(key, data) {
+  cache.set(key, { data, ts: Date.now() });
 }
 
 // ─────────────────────────────────────────────────────────────────
-//  Twelve Data helpers
+//  Retry with Exponential Backoff
 // ─────────────────────────────────────────────────────────────────
-
-/**
- * Fetch 2 years of daily close data.
- * Twelve Data symbol format:
- *   US stocks : "AAPL", "MSFT"
- *   NSE India : "RELIANCE:NSE", "TCS:NSE", "HDFCBANK:NSE"
- *
- * We normalise the incoming symbol:
- *   "RELIANCE.NS"  →  "RELIANCE:NSE"
- *   "TCS.BO"       →  "TCS:BSE"
- *   Everything else is passed as-is.
- */
-function normaliseTDSymbol(raw) {
-  if (raw.endsWith(".NS")) return raw.replace(".NS", "") + ":NSE";
-  if (raw.endsWith(".BO")) return raw.replace(".BO", "") + ":BSE";
-  return raw;
+async function withRetry(fn, retries = 3, delayMs = 3000) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt < retries - 1) {
+        const wait = delayMs * Math.pow(2, attempt) + Math.floor(Math.random() * 1000);
+        console.warn(`[retry] Attempt ${attempt + 1} failed: ${err.message}. Retrying in ${wait}ms...`);
+        await new Promise((r) => setTimeout(r, wait));
+      } else {
+        throw err;
+      }
+    }
+  }
 }
 
-/**
- * GET /time_series  — returns up to 500 daily bars (≈ 2 years)
- * Returns array of { date, open, high, low, close, volume } sorted oldest→newest
- */
-async function fetchTimeSeries(symbol) {
-  const tdSymbol = normaliseTDSymbol(symbol);
-
-  const { data } = await axios.get(`${TD_BASE}/time_series`, {
-    params: {
-      symbol:     tdSymbol,
-      interval:   "1day",
-      outputsize: 500,       // max on free plan
-      apikey:     TD_KEY,
-    },
-    timeout: 15000,
+// ─────────────────────────────────────────────────────────────────
+//  HTTP fetch helper (uses Node built-in https — no extra deps)
+// ─────────────────────────────────────────────────────────────────
+function httpGet(url, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, {
+      headers: {
+        "User-Agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept":          "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer":         "https://finance.yahoo.com/",
+        "Origin":          "https://finance.yahoo.com",
+        ...headers,
+      },
+    }, (res) => {
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => {
+        if (res.statusCode === 429) return reject(new Error("Too Many Requests"));
+        if (res.statusCode >= 400) return reject(new Error(`HTTP ${res.statusCode} for ${url}`));
+        resolve(data);
+      });
+    });
+    req.on("error", reject);
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error("Request timeout")); });
   });
+}
 
-  if (data.status === "error") {
-    throw new Error(data.message || `Symbol "${symbol}" not found`);
+// ─────────────────────────────────────────────────────────────────
+//  Helpers
+// ─────────────────────────────────────────────────────────────────
+function isIndian(symbol) {
+  const s = symbol.toUpperCase();
+  return s.endsWith(".NS") || s.endsWith(".BO");
+}
+
+// Convert Yahoo symbol to Stooq symbol  (AAPL → AAPL.US, RELIANCE.NS → RELIANCE.NS)
+function toStooqSymbol(symbol) {
+  if (isIndian(symbol)) return symbol.toLowerCase();
+  return symbol.toLowerCase() + ".us";
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Data source 1: Yahoo Finance v8 JSON (chart endpoint — not blocked)
+// ─────────────────────────────────────────────────────────────────
+async function fetchFromYahooChart(symbol) {
+  const end   = Math.floor(Date.now() / 1000);
+  const start = end - 2 * 365 * 24 * 3600;
+  const url   = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&period1=${start}&period2=${end}&events=history`;
+
+  const raw  = await httpGet(url);
+  const json = JSON.parse(raw);
+
+  const result = json?.chart?.result?.[0];
+  if (!result) throw new Error(`No chart data for "${symbol}"`);
+
+  const timestamps = result.timestamp || [];
+  const ohlcv      = result.indicators?.quote?.[0] || {};
+  const adjClose   = result.indicators?.adjclose?.[0]?.adjclose || [];
+
+  if (timestamps.length === 0) throw new Error(`Empty chart data for "${symbol}"`);
+
+  return timestamps.map((ts, i) => ({
+    date:   new Date(ts * 1000).toISOString().split("T")[0],
+    open:   +(ohlcv.open?.[i]   || 0).toFixed(2),
+    high:   +(ohlcv.high?.[i]   || 0).toFixed(2),
+    low:    +(ohlcv.low?.[i]    || 0).toFixed(2),
+    close:  +(adjClose[i] || ohlcv.close?.[i] || 0).toFixed(2),
+    volume:  ohlcv.volume?.[i]  || 0,
+  })).filter((d) => d.close > 0);
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Data source 2: Stooq CSV fallback
+// ─────────────────────────────────────────────────────────────────
+async function fetchFromStooq(symbol) {
+  const stooqSym = toStooqSymbol(symbol);
+  const url = `https://stooq.com/q/d/l/?s=${stooqSym}&i=d`;
+  const csv = await httpGet(url, { "Referer": "https://stooq.com/" });
+
+  const lines = csv.trim().split("\n").filter(Boolean);
+  if (lines.length < 2) throw new Error(`No Stooq data for "${symbol}"`);
+
+  const header = lines[0].toLowerCase().split(",");
+  const dateIdx   = header.indexOf("date");
+  const openIdx   = header.indexOf("open");
+  const highIdx   = header.indexOf("high");
+  const lowIdx    = header.indexOf("low");
+  const closeIdx  = header.indexOf("close");
+  const volumeIdx = header.indexOf("volume");
+
+  if (dateIdx === -1 || closeIdx === -1) throw new Error("Unexpected Stooq CSV format");
+
+  return lines.slice(1).map((line) => {
+    const cols = line.split(",");
+    return {
+      date:   cols[dateIdx]?.trim() || "",
+      open:   +(cols[openIdx]   || 0),
+      high:   +(cols[highIdx]   || 0),
+      low:    +(cols[lowIdx]    || 0),
+      close:  +(cols[closeIdx]  || 0),
+      volume:  +(cols[volumeIdx] || 0),
+    };
+  }).filter((d) => d.close > 0 && d.date).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Data source 3: Yahoo Finance quote (current price/meta)
+// ─────────────────────────────────────────────────────────────────
+async function fetchQuoteFromYahoo(symbol) {
+  // Try query1 first, fall back to query2 (some symbols only work on one host)
+  const hosts = ["query1.finance.yahoo.com", "query2.finance.yahoo.com"];
+  let lastErr;
+  for (const host of hosts) {
+    try {
+      const url  = `https://${host}/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+      const raw  = await httpGet(url);
+      const json = JSON.parse(raw);
+      const result = json?.chart?.result?.[0];
+      const meta   = result?.meta;
+      if (!meta) throw new Error(`Quote not found for "${symbol}"`);
+      const prev = meta.previousClose || meta.regularMarketPrice || 1;
+      return {
+        name:           meta.longName || meta.shortName || symbol,
+        currency:       meta.currency || (isIndian(symbol) ? "INR" : "USD"),
+        price:          meta.regularMarketPrice || meta.previousClose,
+        change_percent: +(((meta.regularMarketPrice - prev) / prev) * 100).toFixed(2),
+        market_cap:     null,
+        pe:             null,
+      };
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr;
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  Public fetchers  (cache + retry + fallback)
+// ─────────────────────────────────────────────────────────────────
+async function yf_fetchTimeSeries(symbol) {
+  const cacheKey = `ts:${symbol}`;
+  const cached   = getCached(cacheKey);
+  if (cached) return cached;
+
+  let data;
+  try {
+    // Try Yahoo chart API first (v8 — not the blocked download endpoint)
+    data = await withRetry(() => fetchFromYahooChart(symbol));
+    console.log(`[ts] Yahoo chart OK for ${symbol} (${data.length} bars)`);
+  } catch (err) {
+    console.warn(`[ts] Yahoo failed for ${symbol}: ${err.message} — trying Stooq...`);
+    // Fallback to Stooq
+    data = await withRetry(() => fetchFromStooq(symbol));
+    console.log(`[ts] Stooq OK for ${symbol} (${data.length} bars)`);
   }
 
-  // Twelve Data returns newest-first; reverse for chronological order
-  const bars = (data.values || []).reverse();
+  if (!data || data.length === 0)
+    throw new Error(`No data found for "${symbol}". US example: AAPL | Indian example: RELIANCE.NS`);
 
-  return bars.map((b) => ({
-    date:   b.datetime,
-    open:   parseFloat(b.open),
-    high:   parseFloat(b.high),
-    low:    parseFloat(b.low),
-    close:  parseFloat(b.close),
-    volume: parseInt(b.volume, 10) || 0,
-  }));
+  setCache(cacheKey, data);
+  return data;
 }
 
-/**
- * GET /quote  — real-time snapshot
- * Returns { name, currency, price, change_percent, market_cap (null on free) }
- */
-async function fetchQuote(symbol) {
-  const tdSymbol = normaliseTDSymbol(symbol);
+async function yf_fetchQuote(symbol) {
+  const cacheKey = `quote:${symbol}`;
+  const cached   = getCached(cacheKey);
+  if (cached) return cached;
 
-  const { data } = await axios.get(`${TD_BASE}/quote`, {
-    params: { symbol: tdSymbol, apikey: TD_KEY },
-    timeout: 10000,
-  });
-
-  if (data.status === "error") {
-    throw new Error(data.message || `Quote not found for "${symbol}"`);
-  }
-
-  return {
-    name:           data.name || symbol,
-    currency:       data.currency || "USD",
-    price:          parseFloat(data.close) || parseFloat(data.open) || 0,
-    change_percent: parseFloat(data.percent_change) || 0,
-    // Twelve Data free plan doesn't include market_cap — set null
-    market_cap:     null,
-    pe:             null,
-  };
+  const data = await withRetry(() => fetchQuoteFromYahoo(symbol));
+  setCache(cacheKey, data);
+  return data;
 }
 
 // ─────────────────────────────────────────────────────────────────
-//  Math helpers (unchanged from original)
+//  Math / prediction helpers
 // ─────────────────────────────────────────────────────────────────
 function linearRegression(x, y) {
-  const n   = x.length;
+  const n = x.length;
   const sx  = x.reduce((a, b) => a + b, 0);
   const sy  = y.reduce((a, b) => a + b, 0);
   const sxy = x.reduce((s, xi, i) => s + xi * y[i], 0);
   const sxx = x.reduce((s, xi) => s + xi * xi, 0);
   const slope     = (n * sxy - sx * sy) / (n * sxx - sx * sx);
   const intercept = (sy - slope * sx) / n;
-  const yMean     = sy / n;
-  const ssTot     = y.reduce((s, yi) => s + (yi - yMean) ** 2, 0);
-  const ssRes     = y.reduce((s, yi, i) => s + (yi - (slope * x[i] + intercept)) ** 2, 0);
-  const r2        = ssTot === 0 ? 1 : Math.max(0, 1 - ssRes / ssTot);
+  const yMean = sy / n;
+  const ssTot = y.reduce((s, yi) => s + (yi - yMean) ** 2, 0);
+  const ssRes = y.reduce((s, yi, i) => s + (yi - (slope * x[i] + intercept)) ** 2, 0);
+  const r2 = ssTot === 0 ? 1 : Math.max(0, 1 - ssRes / ssTot);
   return { slope, intercept, r2 };
 }
 
 function holtSmoothing(prices, alpha = 0.3, beta = 0.1) {
-  let l = prices[0];
-  let b = prices[1] - prices[0];
+  let l = prices[0], b = prices[1] - prices[0];
   for (let i = 1; i < prices.length; i++) {
-    const lPrev = l;
+    const lp = l;
     l = alpha * prices[i] + (1 - alpha) * (l + b);
-    b = beta  * (l - lPrev) + (1 - beta) * b;
+    b = beta  * (l - lp) + (1 - beta) * b;
   }
-  return { level: l, trend: b, forecast: (h) => l + h * b };
+  return { forecast: (h) => l + h * b };
 }
 
-function smaForecast(prices, window = 20) {
-  const slice = prices.slice(-Math.min(window, prices.length));
+function smaForecast(prices, w = 20) {
+  const slice = prices.slice(-Math.min(w, prices.length));
   const avg   = slice.reduce((a, b) => a + b, 0) / slice.length;
-  const drift = (prices[prices.length - 1] - prices[prices.length - Math.min(window, prices.length)]) / Math.min(window, prices.length);
+  const drift = (prices[prices.length - 1] - prices[prices.length - Math.min(w, prices.length)]) / Math.min(w, prices.length);
   return (h) => avg + drift * h;
-}
-
-function confidenceBand(currentPrice, dailyVol, h, z = 1.64) {
-  return currentPrice * dailyVol * Math.sqrt(h) * z;
 }
 
 function annualisedVol(prices) {
   const returns = [];
-  for (let i = 1; i < prices.length; i++)
-    returns.push(Math.log(prices[i] / prices[i - 1]));
-  const mean     = returns.reduce((a, b) => a + b, 0) / returns.length;
+  for (let i = 1; i < prices.length; i++) returns.push(Math.log(prices[i] / prices[i - 1]));
+  const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
   const variance = returns.reduce((s, r) => s + (r - mean) ** 2, 0) / returns.length;
   return Math.sqrt(variance * 252);
 }
 
 function classifyTrend(prices) {
-  const x    = prices.map((_, i) => i);
-  const logY = prices.map((p) => Math.log(p));
-  const reg  = linearRegression(x, logY);
+  const reg = linearRegression(prices.map((_, i) => i), prices.map((p) => Math.log(p)));
   const pctPerDay = (Math.exp(reg.slope) - 1) * 100;
   if (pctPerDay >  0.15) return { label: "Strong Uptrend",   color: "#00e676", icon: "🚀", pctPerDay };
   if (pctPerDay >  0.03) return { label: "Uptrend",          color: "#69f0ae", icon: "📈", pctPerDay };
@@ -178,7 +288,7 @@ function buildPredictions(closePrices) {
   const reg    = linearRegression(x, logY);
   const holt   = holtSmoothing(closePrices);
   const sma    = smaForecast(closePrices, 30);
-  const dailyVol = annualisedVol(closePrices) / Math.sqrt(252);
+  const dVol   = annualisedVol(closePrices) / Math.sqrt(252);
   const last   = closePrices[closePrices.length - 1];
   const n      = closePrices.length;
 
@@ -187,319 +297,260 @@ function buildPredictions(closePrices) {
     const holtPred = Math.max(holt.forecast(h), last * 0.1);
     const smaPred  = Math.max(sma(h), last * 0.1);
     const ensemble = 0.40 * regPred + 0.40 * holtPred + 0.20 * smaPred;
-    const band     = confidenceBand(last, dailyVol, h, 1.64);
-    const pctChange = ((ensemble - last) / last) * 100;
-
+    const band     = last * dVol * Math.sqrt(h) * 1.64;
+    const pctChg   = ((ensemble - last) / last) * 100;
     return {
       days:       h,
       label:      h === 730 ? "2 Years" : `${h} Days`,
       predicted:  +ensemble.toFixed(2),
       low:        +(ensemble - band).toFixed(2),
       high:       +(ensemble + band).toFixed(2),
-      pctChange:  +pctChange.toFixed(2),
+      pctChange:  +pctChg.toFixed(2),
       confidence: +(Math.min(95, Math.max(45, reg.r2 * 100 - h * 0.03)).toFixed(1)),
       direction:  ensemble >= last ? "up" : "down",
     };
   });
 
-  return { predictions, reg, dailyVol };
+  return { predictions, reg, dailyVol: dVol };
 }
 
 // ─────────────────────────────────────────────────────────────────
-//  Popular stocks list (unchanged)
+//  Popular stocks list
 // ─────────────────────────────────────────────────────────────────
 const POPULAR_STOCKS = [
-  { symbol: "AAPL",  name: "Apple Inc.",                    sector: "Technology" },
-  { symbol: "MSFT",  name: "Microsoft Corp.",               sector: "Technology" },
-  { symbol: "GOOGL", name: "Alphabet Inc.",                 sector: "Technology" },
-  { symbol: "AMZN",  name: "Amazon.com Inc.",               sector: "Consumer" },
-  { symbol: "NVDA",  name: "NVIDIA Corp.",                  sector: "Technology" },
-  { symbol: "META",  name: "Meta Platforms Inc.",           sector: "Technology" },
-  { symbol: "TSLA",  name: "Tesla Inc.",                    sector: "Automotive" },
-  { symbol: "JPM",   name: "JPMorgan Chase",                sector: "Finance" },
-  { symbol: "V",     name: "Visa Inc.",                     sector: "Finance" },
-  { symbol: "JNJ",   name: "Johnson & Johnson",             sector: "Healthcare" },
-  { symbol: "WMT",   name: "Walmart Inc.",                  sector: "Retail" },
-  { symbol: "XOM",   name: "ExxonMobil Corp.",              sector: "Energy" },
-  { symbol: "RELIANCE.NS",   name: "Reliance Industries",         sector: "Conglomerate" },
-  { symbol: "TCS.NS",        name: "Tata Consultancy Services",   sector: "Technology" },
-  { symbol: "HDFCBANK.NS",   name: "HDFC Bank",                   sector: "Finance" },
-  { symbol: "INFY.NS",       name: "Infosys Ltd.",                sector: "Technology" },
-  { symbol: "ICICIBANK.NS",  name: "ICICI Bank",                  sector: "Finance" },
-  { symbol: "WIPRO.NS",      name: "Wipro Ltd.",                  sector: "Technology" },
-  { symbol: "SBIN.NS",       name: "State Bank of India",         sector: "Finance" },
-  { symbol: "BAJFINANCE.NS", name: "Bajaj Finance",               sector: "Finance" },
-  { symbol: "TATAMOTORS.NS", name: "Tata Motors",                 sector: "Automotive" },
-  { symbol: "ADANIENT.NS",   name: "Adani Enterprises",           sector: "Conglomerate" },
+  { symbol: "AAPL",          name: "Apple Inc.",                   sector: "Technology",    region: "US" },
+  { symbol: "MSFT",          name: "Microsoft Corp.",              sector: "Technology",    region: "US" },
+  { symbol: "GOOGL",         name: "Alphabet Inc.",                sector: "Technology",    region: "US" },
+  { symbol: "AMZN",          name: "Amazon.com Inc.",              sector: "Consumer",      region: "US" },
+  { symbol: "NVDA",          name: "NVIDIA Corp.",                 sector: "Technology",    region: "US" },
+  { symbol: "META",          name: "Meta Platforms Inc.",          sector: "Technology",    region: "US" },
+  { symbol: "TSLA",          name: "Tesla Inc.",                   sector: "Automotive",    region: "US" },
+  { symbol: "JPM",           name: "JPMorgan Chase",               sector: "Finance",       region: "US" },
+  { symbol: "V",             name: "Visa Inc.",                    sector: "Finance",       region: "US" },
+  { symbol: "JNJ",           name: "Johnson & Johnson",            sector: "Healthcare",    region: "US" },
+  { symbol: "WMT",           name: "Walmart Inc.",                 sector: "Retail",        region: "US" },
+  { symbol: "XOM",           name: "ExxonMobil Corp.",             sector: "Energy",        region: "US" },
+  { symbol: "RELIANCE.NS",   name: "Reliance Industries",          sector: "Conglomerate",  region: "IN" },
+  { symbol: "TCS.NS",        name: "Tata Consultancy Services",    sector: "Technology",    region: "IN" },
+  { symbol: "HDFCBANK.NS",   name: "HDFC Bank",                    sector: "Finance",       region: "IN" },
+  { symbol: "INFY.NS",       name: "Infosys Ltd.",                 sector: "Technology",    region: "IN" },
+  { symbol: "ICICIBANK.NS",  name: "ICICI Bank",                   sector: "Finance",       region: "IN" },
+  { symbol: "WIPRO.NS",      name: "Wipro Ltd.",                   sector: "Technology",    region: "IN" },
+  { symbol: "SBIN.NS",       name: "State Bank of India",          sector: "Finance",       region: "IN" },
+  { symbol: "BAJFINANCE.NS", name: "Bajaj Finance",                sector: "Finance",       region: "IN" },
+  { symbol: "TATAMOTORS.NS", name: "Tata Motors",                  sector: "Automotive",    region: "IN" },
+  { symbol: "ADANIENT.NS",   name: "Adani Enterprises",            sector: "Conglomerate",  region: "IN" },
+  { symbol: "HINDUNILVR.NS", name: "Hindustan Unilever",           sector: "FMCG",          region: "IN" },
+  { symbol: "KOTAKBANK.NS",  name: "Kotak Mahindra Bank",          sector: "Finance",       region: "IN" },
+  { symbol: "AXISBANK.NS",   name: "Axis Bank",                    sector: "Finance",       region: "IN" },
+  { symbol: "LT.NS",         name: "Larsen & Toubro",              sector: "Infrastructure",region: "IN" },
+  { symbol: "ZOMATO.NS",     name: "Zomato Ltd.",                  sector: "Technology",    region: "IN" },
+  { symbol: "MARUTI.NS",     name: "Maruti Suzuki",                sector: "Automotive",    region: "IN" },
+  { symbol: "SUNPHARMA.NS",  name: "Sun Pharmaceutical",           sector: "Healthcare",    region: "IN" },
+  { symbol: "TITAN.NS",      name: "Titan Company",                sector: "Consumer",      region: "IN" },
+  { symbol: "HCLTECH.NS",    name: "HCL Technologies",             sector: "Technology",    region: "IN" },
 ];
 
 // ─────────────────────────────────────────────────────────────────
 //  GET /stock/popular
 // ─────────────────────────────────────────────────────────────────
-router.get("/popular", (_req, res) => {
-  res.json({ stocks: POPULAR_STOCKS });
+router.get("/popular", (_req, res) => res.json({ stocks: POPULAR_STOCKS }));
+
+// ─────────────────────────────────────────────────────────────────
+//  GET /stock/cache-status  (optional debug endpoint)
+// ─────────────────────────────────────────────────────────────────
+router.get("/cache-status", (_req, res) => {
+  const entries = [];
+  cache.forEach((v, k) => {
+    const ageMs  = Date.now() - v.ts;
+    const ttlMs  = Math.max(0, CACHE_TTL - ageMs);
+    entries.push({ key: k, ageSeconds: Math.floor(ageMs / 1000), ttlSeconds: Math.floor(ttlMs / 1000) });
+  });
+  res.json({ cached: entries.length, entries });
 });
 
 // ─────────────────────────────────────────────────────────────────
 //  POST /stock/predict
-//  Body: { symbol: "AAPL" }
 // ─────────────────────────────────────────────────────────────────
 router.post("/predict", async (req, res) => {
-  if (!TD_KEY) return res.status(503).json({ detail: "TWELVE_DATA_API_KEY not configured in .env" });
-
   const symbol = (req.body.symbol || "").trim().toUpperCase();
   if (!symbol) return res.status(400).json({ detail: "symbol is required" });
 
   try {
-    // Parallel fetch: historical bars + quote snapshot
-    const [historical, quote] = await Promise.all([
-      fetchTimeSeries(symbol),
-      fetchQuote(symbol),
-    ]);
+    // Sequential fetches to reduce simultaneous Yahoo Finance connections
+    const historical = await yf_fetchTimeSeries(symbol);
+    const quote      = await yf_fetchQuote(symbol);
 
-    if (!historical || historical.length < 30)
-      return res.status(404).json({ detail: `Not enough data for "${symbol}". Check the symbol.` });
+    const minBars = 20;
+    if (historical.length < minBars)
+      return res.status(404).json({ detail: `Not enough data for "${symbol}" (${historical.length} bars).` });
 
     const closes = historical.map((d) => d.close).filter(Boolean);
-    if (closes.length < 30)
-      return res.status(404).json({ detail: "Insufficient price data." });
+    if (closes.length < minBars) return res.status(404).json({ detail: "Insufficient price data." });
 
     const currentPrice = closes[closes.length - 1];
-
     const { predictions, reg, dailyVol } = buildPredictions(closes);
 
-    const trend30  = classifyTrend(closes.slice(-30));
-    const trend90  = classifyTrend(closes.slice(-Math.min(90, closes.length)));
+    const trend30  = classifyTrend(closes.slice(-Math.min(30,  closes.length)));
+    const trend90  = classifyTrend(closes.slice(-Math.min(90,  closes.length)));
     const trend365 = classifyTrend(closes);
 
-    let priceTier = "";
-    if (currentPrice <= 50)       priceTier = "under50";
-    else if (currentPrice <= 100) priceTier = "under100";
-    else if (currentPrice <= 150) priceTier = "under150";
-    else                           priceTier = "above150";
-
-    const year252    = closes.slice(-252);
-    const support    = +Math.min(...year252).toFixed(2);
-    const resistance = +Math.max(...year252).toFixed(2);
-    const avg52w     = +(year252.reduce((a, b) => a + b, 0) / year252.length).toFixed(2);
+    const support    = +Math.min(...closes).toFixed(2);
+    const resistance = +Math.max(...closes).toFixed(2);
+    const avg52w     = +(closes.slice(-252).reduce((a, b) => a + b, 0) / Math.min(252, closes.length)).toFixed(2);
 
     // RSI (14-day)
-    const gains = [], losses = [];
-    for (let i = closes.length - 15; i < closes.length; i++) {
-      const d = closes[i] - closes[i - 1];
-      gains.push(d > 0 ? d : 0);
-      losses.push(d < 0 ? -d : 0);
+    let rsi = null;
+    if (closes.length >= 15) {
+      const gains = [], losses = [];
+      for (let i = closes.length - 15; i < closes.length; i++) {
+        const d = closes[i] - closes[i - 1];
+        gains.push(d > 0 ? d : 0);
+        losses.push(d < 0 ? -d : 0);
+      }
+      const avgGain = gains.reduce((a, b) => a + b, 0) / 14;
+      const avgLoss = losses.reduce((a, b) => a + b, 0) / 14;
+      rsi = +(100 - 100 / (1 + (avgLoss === 0 ? 100 : avgGain / avgLoss))).toFixed(1);
     }
-    const avgGain = gains.reduce((a, b) => a + b, 0) / 14;
-    const avgLoss = losses.reduce((a, b) => a + b, 0) / 14;
-    const rs  = avgLoss === 0 ? 100 : avgGain / avgLoss;
-    const rsi = +(100 - 100 / (1 + rs)).toFixed(1);
 
     // MACD
-    function ema(data, period) {
-      const k = 2 / (period + 1);
-      let e = data[0];
-      for (let i = 1; i < data.length; i++) e = data[i] * k + e * (1 - k);
-      return e;
-    }
-    const ema12 = ema(closes, 12);
-    const ema26 = ema(closes, 26);
-    const macd  = +(ema12 - ema26).toFixed(4);
+    const ema  = (data, p) => { const k = 2/(p+1); let e = data[0]; for(let i=1;i<data.length;i++) e=data[i]*k+e*(1-k); return e; };
+    const macd = +(ema(closes, Math.min(12, closes.length)) - ema(closes, Math.min(26, closes.length))).toFixed(4);
+    const ma50  = closes.length >= 50  ? +(closes.slice(-50).reduce((a,b)=>a+b,0)/50).toFixed(2)   : null;
+    const ma200 = closes.length >= 200 ? +(closes.slice(-200).reduce((a,b)=>a+b,0)/200).toFixed(2) : null;
 
-    // Chart data: last 90 bars
-    const chartData = historical.slice(-90).map((d) => ({
-      date:   d.date,
-      open:   +d.open.toFixed(2),
-      high:   +d.high.toFixed(2),
-      low:    +d.low.toFixed(2),
-      close:  +d.close.toFixed(2),
-      volume: d.volume,
-    }));
+    const chartData  = historical.slice(-90).map((d) => ({ ...d }));
+    const volumeData = historical.slice(-365).map((d) => ({ date: d.date, volume: d.volume, close: d.close }));
 
     res.json({
       symbol,
       name:         quote.name,
       currency:     quote.currency,
       currentPrice: +currentPrice.toFixed(2),
-      priceTier,
-      marketCap:    quote.market_cap,       // null on free plan
-      pe:           quote.pe,               // null on free plan
-      dayChange:    +quote.change_percent.toFixed(2),
+      marketCap:    quote.market_cap,
+      pe:           quote.pe,
+      dayChange:    quote.change_percent,
+      dataSource:   "Yahoo Finance",
       predictions,
-      technicals: {
-        rsi,
-        macd,
-        support,
-        resistance,
-        avg52w,
-        annualisedVol: +(dailyVol * Math.sqrt(252) * 100).toFixed(2),
-        r2: +reg.r2.toFixed(4),
-      },
-      trend: {
-        short:   trend30,
-        medium:  trend90,
-        long:    trend365,
-        overall: trend365.pctPerDay > 0 ? "upward" : "downward",
-      },
-      chartData,
+      technicals: { rsi: rsi ?? "N/A", macd, support, resistance, avg52w, ma50, ma200,
+                    annualisedVol: +(dailyVol * Math.sqrt(252) * 100).toFixed(2), r2: +reg.r2.toFixed(4) },
+      trend: { short: trend30, medium: trend90, long: trend365,
+               overall: trend365.pctPerDay > 0 ? "upward" : "downward" },
+      chartData, volumeData,
       dataPoints: closes.length,
     });
 
   } catch (err) {
     console.error("[stock/predict]", err.message);
-    if (err.message?.toLowerCase().includes("not found") || err.message?.includes("symbol"))
-      return res.status(404).json({ detail: `Symbol "${symbol}" not found.` });
-    res.status(500).json({ detail: err.message || "Prediction failed" });
+    const msg = err.message || "Prediction failed";
+    if (msg.includes("not found") || msg.includes("No data"))
+      return res.status(404).json({ detail: msg });
+    if (msg.includes("Too Many Requests") || msg.includes("429"))
+      return res.status(429).json({ detail: "Yahoo Finance is rate-limiting requests. Please wait 30 seconds and try again." });
+    res.status(500).json({ detail: msg });
   }
 });
 
 // ─────────────────────────────────────────────────────────────────
 //  POST /stock/screener
-//  Body: { priceMax: 100, trend: "up" | "down" | "all", sector: "" }
-//
-//  NOTE: The screener calls /price (batch endpoint) to stay within
-//  rate limits. Twelve Data free plan allows 8 req/min.
-//  We fetch quotes in batches of 5 with a small delay between batches.
+//  Uses Yahoo Finance /v7/finance/quote batch endpoint — fetches up
+//  to 10 symbols in ONE request (same approach as Python yf.download)
 // ─────────────────────────────────────────────────────────────────
+
+async function batchFetchQuotes(symbols) {
+  // Yahoo accepts comma-separated symbols — batch of up to 10 at once
+  const joined = symbols.map(encodeURIComponent).join("%2C");
+  const hosts  = ["query1.finance.yahoo.com", "query2.finance.yahoo.com"];
+
+  for (const host of hosts) {
+    try {
+      const url = `https://${host}/v7/finance/quote?symbols=${joined}&fields=regularMarketPrice,regularMarketPreviousClose,longName,shortName,currency`;
+      const raw  = await httpGet(url);
+      const json = JSON.parse(raw);
+      const items = json?.quoteResponse?.result || [];
+      if (items.length > 0) {
+        console.log(`[screener] batch OK via ${host}: got ${items.length}/${symbols.length} quotes`);
+        return items;
+      }
+    } catch (e) {
+      console.warn(`[screener] batch ${host} failed: ${e.message}`);
+    }
+  }
+  return [];
+}
+
 router.post("/screener", async (req, res) => {
-  if (!TD_KEY) return res.status(503).json({ detail: "TWELVE_DATA_API_KEY not configured in .env" });
-
   const { priceMax = 9999, trend = "all", sector = "" } = req.body;
 
-  try {
-    const list = sector
-      ? POPULAR_STOCKS.filter((s) => s.sector.toLowerCase().includes(sector.toLowerCase()))
-      : POPULAR_STOCKS;
+  const list = sector
+    ? POPULAR_STOCKS.filter((s) => s.sector.toLowerCase().includes(sector.toLowerCase()))
+    : POPULAR_STOCKS;
 
-    const results = [];
+  // Check if all symbols are cached already
+  const quoteMap = {};
+  const needFetch = [];
 
-    // Fetch quotes in batches of 5 to respect 8 req/min rate limit
-    for (let i = 0; i < list.length; i += 5) {
-      const batch = list.slice(i, i + 5);
+  for (const stock of list) {
+    const cached = getCached(`screener:${stock.symbol}`);
+    if (cached) {
+      quoteMap[stock.symbol] = cached;
+    } else {
+      needFetch.push(stock.symbol);
+    }
+  }
 
-      // Use Twelve Data batch /price endpoint — comma-separated symbols
-      const tdSymbols = batch.map((s) => normaliseTDSymbol(s.symbol)).join(",");
+  // Batch fetch in chunks of 10 (like Python's yf.download with threads=True)
+  const CHUNK = 10;
+  for (let i = 0; i < needFetch.length; i += CHUNK) {
+    const chunk   = needFetch.slice(i, i + CHUNK);
+    const fetched = await batchFetchQuotes(chunk);
 
-      const { data } = await axios.get(`${TD_BASE}/price`, {
-        params: { symbol: tdSymbols, apikey: TD_KEY },
-        timeout: 10000,
-      });
+    for (const item of fetched) {
+      const sym  = item.symbol;
+      const curr = item.regularMarketPrice;
+      const prev = item.regularMarketPreviousClose || curr;
+      const dayChange = prev ? +(((curr - prev) / prev) * 100).toFixed(2) : 0;
 
-      // Response is either { "AAPL": { price: "..." }, ... }
-      // or a single { price: "..." } when only one symbol
-      const priceMap = batch.length === 1
-        ? { [normaliseTDSymbol(batch[0].symbol)]: data }
-        : data;
+      const q = {
+        name:           item.longName || item.shortName || sym,
+        currency:       item.currency || (isIndian(sym) ? "INR" : "USD"),
+        price:          curr,
+        change_percent: dayChange,
+      };
 
-      for (const stock of batch) {
-        const tdSym = normaliseTDSymbol(stock.symbol);
-        const entry = priceMap[tdSym];
-        if (!entry || entry.status === "error") continue;
-
-        const price = parseFloat(entry.price) || 0;
-        if (price > priceMax) continue;
-
-        // For trend (MA50 vs MA200), use a lightweight EMA from the time series
-        // To save API calls on the screener we approximate using the quote's
-        // fifty_two_week high/low midpoint as a proxy — and flag accordingly.
-        // For a more accurate screener, replace with individual fetchTimeSeries calls.
-        const trendDir = "unknown"; // see note below
-
-        if (trend !== "all" && trendDir !== trend) continue;
-
-        results.push({
-          symbol:    stock.symbol,
-          name:      stock.name,
-          sector:    stock.sector,
-          price:     +price.toFixed(2),
-          dayChange: 0,    // /price endpoint doesn't include change; use /quote for full data
-          ma50:      null,
-          ma200:     null,
-          trend:     trendDir,
-          marketCap: null,
-        });
-      }
-
-      // Polite delay between batches to stay within 8 req/min
-      if (i + 5 < list.length) {
-        await new Promise((r) => setTimeout(r, 1500));
-      }
+      quoteMap[sym] = q;
+      setCache(`screener:${sym}`, q);
     }
 
-    res.json({ results, count: results.length });
-  } catch (err) {
-    console.error("[stock/screener]", err.message);
-    res.status(500).json({ detail: err.message || "Screener failed" });
+    // Small delay between chunks to be polite
+    if (i + CHUNK < needFetch.length) await new Promise(r => setTimeout(r, 300));
   }
-});
 
-// ─────────────────────────────────────────────────────────────────
-//  POST /stock/screener/full
-//  Accurate screener: fetches full time-series per stock to compute
-//  real MA50/MA200. Slower (≈ 3 req/s) but precise trend detection.
-//  Only recommended if you have a paid Twelve Data plan or are
-//  screening a small list.
-// ─────────────────────────────────────────────────────────────────
-router.post("/screener/full", async (req, res) => {
-  if (!TD_KEY) return res.status(503).json({ detail: "TWELVE_DATA_API_KEY not configured in .env" });
+  // Filter and build results
+  const results = [];
+  for (const stock of list) {
+    const q = quoteMap[stock.symbol];
+    if (!q?.price) continue;
 
-  const { priceMax = 9999, trend = "all", sector = "" } = req.body;
+    const price     = q.price;
+    if (price > priceMax) continue;
 
-  try {
-    const list = sector
-      ? POPULAR_STOCKS.filter((s) => s.sector.toLowerCase().includes(sector.toLowerCase()))
-      : POPULAR_STOCKS;
+    const dayChange = q.change_percent || 0;
+    const trendDir  = dayChange >= 0 ? "up" : "down";
+    if (trend !== "all" && trendDir !== trend) continue;
 
-    const results = [];
-
-    for (const stock of list) {
-      try {
-        const bars = await fetchTimeSeries(stock.symbol);
-        if (bars.length < 50) continue;
-
-        const closes = bars.map((b) => b.close);
-        const price  = closes[closes.length - 1];
-        if (price > priceMax) continue;
-
-        function simpleMA(arr, n) {
-          const slice = arr.slice(-n);
-          return slice.reduce((a, b) => a + b, 0) / slice.length;
-        }
-
-        const ma50    = simpleMA(closes, 50);
-        const ma200   = simpleMA(closes, Math.min(200, closes.length));
-        const trendDir = ma50 > ma200 ? "up" : "down";
-
-        if (trend !== "all" && trendDir !== trend) continue;
-
-        const dayChange = closes.length >= 2
-          ? +((closes[closes.length - 1] / closes[closes.length - 2] - 1) * 100).toFixed(2)
-          : 0;
-
-        results.push({
-          symbol:    stock.symbol,
-          name:      stock.name,
-          sector:    stock.sector,
-          price:     +price.toFixed(2),
-          dayChange,
-          ma50:      +ma50.toFixed(2),
-          ma200:     +ma200.toFixed(2),
-          trend:     trendDir,
-          marketCap: null,
-        });
-
-        // Respect rate limit: 8 req/min → 1 req per ~450ms
-        await new Promise((r) => setTimeout(r, 450));
-      } catch (innerErr) {
-        console.warn(`[screener/full] skipping ${stock.symbol}: ${innerErr.message}`);
-      }
-    }
-
-    res.json({ results, count: results.length });
-  } catch (err) {
-    console.error("[stock/screener/full]", err.message);
-    res.status(500).json({ detail: err.message || "Screener failed" });
+    results.push({
+      ...stock,
+      price:     +price.toFixed(2),
+      dayChange,
+      trend:     trendDir,
+      ma50:      null,
+      ma200:     null,
+    });
   }
+
+  console.log(`[screener] done: ${results.length}/${list.length} stocks matched`);
+  res.json({ results, count: results.length });
 });
 
 module.exports = router;
