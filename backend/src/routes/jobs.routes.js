@@ -2,8 +2,8 @@
  * routes/jobs.routes.js
  * ──────────────────────────────────────────────────────────────────────────
  * POST /search-jobs/
- * Runs scrapers in parallel, deduplicates, scores against resume.
- * Updated for Render/cloud server compatibility.
+ * On production (Render): runs scrapers SEQUENTIALLY to avoid spawn ETXTBSY
+ * On local dev: runs scrapers in parallel (faster)
  * ──────────────────────────────────────────────────────────────────────────
  */
 
@@ -21,12 +21,12 @@ const { scoreJobsAgainstResume } = require("../services/predictor.service");
 
 const router = express.Router();
 
-// Longer timeout on production (Render is slower than localhost)
 const IS_PRODUCTION = process.env.NODE_ENV === "production" ||
                       !!process.env.RENDER ||
                       !!process.env.RAILWAY_ENVIRONMENT;
 
-const SCRAPER_TIMEOUT_MS = IS_PRODUCTION ? 150_000 : 90_000;
+// Per-scraper timeout
+const SCRAPER_TIMEOUT_MS = IS_PRODUCTION ? 120_000 : 90_000;
 
 // ── Scraper registry ──────────────────────────────────────────────────────────
 const SCRAPER_REGISTRY = {
@@ -46,6 +46,28 @@ const ROLE_INDICATORS = new Set([
 ]);
 
 
+// ── Helper: run one scraper with timeout ──────────────────────────────────────
+async function runScraper(src, queries, experience_level, location) {
+  const fn = SCRAPER_REGISTRY[src];
+  try {
+    const result = await Promise.race([
+      fn(queries, experience_level, location),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`Timeout after ${SCRAPER_TIMEOUT_MS / 1000}s`)),
+          SCRAPER_TIMEOUT_MS
+        )
+      ),
+    ]);
+    console.log(`[${src}] ✓ ${result.length} jobs`);
+    return result;
+  } catch (err) {
+    console.error(`[${src}] ✗ Error: ${err.message}`);
+    return [];
+  }
+}
+
+
 // ── POST /search-jobs/ ────────────────────────────────────────────────────────
 
 router.post("/search-jobs/", async (req, res) => {
@@ -56,10 +78,9 @@ router.post("/search-jobs/", async (req, res) => {
     location         = "",
     sources          = ["indeed", "naukri"],
     weighted_skills  = [],
-    top_skills       = [],
   } = req.body || {};
 
-  console.log(`[Jobs] Request — sources: ${sources} | exp: ${experience_level} | location: ${location}`);
+  console.log(`[Jobs] sources: ${sources} | exp: ${experience_level} | location: ${location} | mode: ${IS_PRODUCTION ? "sequential" : "parallel"}`);
 
   // ── Build search queries ───────────────────────────────────────────────────
   const roleKeywords = roles.length
@@ -72,38 +93,36 @@ router.post("/search-jobs/", async (req, res) => {
 
   finalQueries = [...new Map(finalQueries.map((q) => [q.toLowerCase(), q])).values()].slice(0, 3);
 
-  console.log(`[Jobs] Queries: ${finalQueries} | timeout: ${SCRAPER_TIMEOUT_MS}ms`);
+  console.log(`[Jobs] Queries: ${finalQueries}`);
 
-  // ── Run scrapers in parallel ───────────────────────────────────────────────
   const validSources = sources.filter((s) => SCRAPER_REGISTRY[s]);
-
   if (!validSources.length) {
     return res.status(400).json({ detail: "No valid sources provided." });
   }
 
-  const results = await Promise.allSettled(
-    validSources.map((src) =>
-      Promise.race([
-        SCRAPER_REGISTRY[src](finalQueries, experience_level, location),
-        new Promise((_, reject) =>
-          setTimeout(
-            () => reject(new Error(`Scraper timeout after ${SCRAPER_TIMEOUT_MS / 1000}s`)),
-            SCRAPER_TIMEOUT_MS
-          )
-        ),
-      ])
-    )
-  );
-
+  // ── Run scrapers ───────────────────────────────────────────────────────────
   const allJobs = [];
-  results.forEach((result, i) => {
-    if (result.status === "fulfilled") {
-      console.log(`[${validSources[i]}] ✓ ${result.value.length} jobs`);
-      allJobs.push(...result.value);
-    } else {
-      console.error(`[${validSources[i]}] ✗ Error: ${result.reason?.message}`);
+
+  if (IS_PRODUCTION) {
+    // SEQUENTIAL — one Chrome process at a time (avoids spawn ETXTBSY on Render)
+    console.log(`[Jobs] Running ${validSources.length} scrapers sequentially...`);
+    for (const src of validSources) {
+      console.log(`[Jobs] → Starting: ${src}`);
+      const jobs = await runScraper(src, finalQueries, experience_level, location);
+      allJobs.push(...jobs);
+      // Give OS 2s to fully release Chrome resources before next launch
+      await new Promise((r) => setTimeout(r, 2000));
     }
-  });
+  } else {
+    // PARALLEL — fast for local development
+    console.log(`[Jobs] Running ${validSources.length} scrapers in parallel...`);
+    const results = await Promise.allSettled(
+      validSources.map((src) => runScraper(src, finalQueries, experience_level, location))
+    );
+    results.forEach((r) => {
+      if (r.status === "fulfilled") allJobs.push(...r.value);
+    });
+  }
 
   // ── Deduplicate by apply_link ──────────────────────────────────────────────
   const seenLinks = new Set();
@@ -116,7 +135,7 @@ router.post("/search-jobs/", async (req, res) => {
     }
   }
 
-  // ── Count by source ───────────────────────────────────────────────────────
+  // ── Count by source ────────────────────────────────────────────────────────
   const bySource = {};
   for (const job of deduped) {
     const k = (job.source || "").toLowerCase().trim();
