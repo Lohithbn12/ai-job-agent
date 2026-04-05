@@ -2,18 +2,13 @@
  * scrapers/foundit.scraper.js
  * ──────────────────────────────────────────────────────────────────────────
  * Scrapes Foundit.in (formerly Monster India) using Puppeteer.
- * Mirrors Python foundit_scraper.py logic exactly.
- *
- * URL pattern:
- *   https://www.foundit.in/srp/results?query={keyword}
- *     &experienceRanges={min}~{max}&sort=1&limit=15
- *     &locationPreferences={city}
+ * Updated for Render/cloud server compatibility.
  * ──────────────────────────────────────────────────────────────────────────
  */
 
 "use strict";
 
-const { withBrowser, withPage, sleep } = require("../services/chromeHelper");
+const { withBrowser, withPage, sleep, IS_PRODUCTION } = require("../services/chromeHelper");
 const {
   extractYearsFromText,
   formatExpRequired,
@@ -21,7 +16,7 @@ const {
   getUserExpRange,
 } = require("../utils/expParser");
 
-const DEEP_VERIFY_LIMIT = 3;
+const DEEP_VERIFY_LIMIT = IS_PRODUCTION ? 2 : 3;
 
 
 // ── Main export ───────────────────────────────────────────────────────────────
@@ -48,10 +43,18 @@ async function collectFounditJobs(keywords, experienceLevel = "0-1", location = 
       console.log(`[Foundit] URL: ${searchUrl}`);
 
       const keywordJobs = await withPage(browser, async (page) => {
-        await page.goto(searchUrl, { waitUntil: "domcontentloaded" });
-        await sleep(2000, 3000);
+        try {
+          await page.goto(searchUrl, {
+            waitUntil: "domcontentloaded",
+            timeout: IS_PRODUCTION ? 60_000 : 30_000,
+          });
+        } catch (navErr) {
+          console.log(`  [Foundit] Navigation error: ${navErr.message} — trying anyway`);
+        }
 
-        console.log(`  Page: ${await page.title()}`);
+        await sleep(IS_PRODUCTION ? 4000 : 2000, IS_PRODUCTION ? 6000 : 3000);
+
+        console.log(`  Page: ${await page.title().catch(() => "unknown")}`);
 
         // ── Extract cards ──────────────────────────────────────────────────
         const cards = await page.$$(
@@ -68,31 +71,19 @@ async function collectFounditJobs(keywords, experienceLevel = "0-1", location = 
             const data = await card.evaluate((el) => {
               const text = (sel) => el.querySelector(sel)?.textContent?.trim() || "";
 
-              // Title
-              const title = text(".jobTitle");
-
-              // Company
+              const title   = text(".jobTitle");
               const company = text(".companyName p");
-
-              // Location
-              const loc = text(".details.location");
-
-              // Salary
-              const salary = text(".salary, [class*='salary'], [class*='ctc']");
-
-              // Experience text on card
+              const loc     = text(".details.location");
+              const salary  = text(".salary, [class*='salary'], [class*='ctc']");
               const expText = text(".experienceSalary .details");
-
-              // Link - construct from card id
-              const link = el.id ? `https://www.foundit.in/job-detail/${el.id}` : "";
-
+              const link    = el.id ? `https://www.foundit.in/job-detail/${el.id}` : "";
               const snippet = el.textContent.toLowerCase();
+
               return { title, company, loc, salary, expText, link, snippet };
             });
 
             if (!data.title || !data.link) continue;
 
-            // ── P1 ─────────────────────────────────────────────────────────
             const expRange    = extractYearsFromText(data.expText) || extractYearsFromText(data.snippet);
             const expReq      = formatExpRequired(expRange);
             const expVerified = expRange !== null;
@@ -106,29 +97,31 @@ async function collectFounditJobs(keywords, experienceLevel = "0-1", location = 
             console.log(`  ${expVerified ? "✅[P1]" : "🔍[P2]"} ${data.title} @ ${data.company} | req: ${expReq || "unknown"}`);
 
             found.push({
-              title:            data.title,
-              company:          data.company,
-              location:         data.loc,
-              salary:           data.salary,
-              experience_level: experienceLevel,
-              exp_required:     expReq,
-              exp_mismatch:     mismatch,
+              title:             data.title,
+              company:           data.company,
+              location:          data.loc,
+              salary:            data.salary,
+              experience_level:  experienceLevel,
+              exp_required:      expReq,
+              exp_mismatch:      mismatch,
               exp_hard_mismatch: hardMismatch,
-              exp_verified:     expVerified,
-              apply_link:       data.link,
-              easy_apply:       false,
-              source:           "Foundit",
+              exp_verified:      expVerified,
+              apply_link:        data.link,
+              easy_apply:        false,
+              source:            "Foundit",
             });
           } catch (e) {
             console.log(`  Card error: ${e.message}`);
           }
         }
 
-        // ── P2 ─────────────────────────────────────────────────────────────
-        const unverified = found.filter((j) => !j.exp_verified).slice(0, DEEP_VERIFY_LIMIT);
-        if (unverified.length) {
-          console.log(`  [P2] Deep-verifying ${unverified.length} jobs...`);
-          await deepVerify(unverified, page, userMin, userMax);
+        // P2 — skip on production server
+        if (!IS_PRODUCTION) {
+          const unverified = found.filter((j) => !j.exp_verified).slice(0, DEEP_VERIFY_LIMIT);
+          if (unverified.length) {
+            console.log(`  [P2] Deep-verifying ${unverified.length} jobs...`);
+            await deepVerify(unverified, page, userMin, userMax);
+          }
         }
 
         return found;
@@ -150,10 +143,13 @@ async function deepVerify(jobs, page, userMin, userMax) {
   for (const job of jobs) {
     try {
       console.log(`    [P2] ${job.title.slice(0, 50)}`);
-      await page.goto(job.apply_link, { waitUntil: "domcontentloaded" });
+      await page.goto(job.apply_link, { waitUntil: "domcontentloaded", timeout: 30_000 });
       await sleep(1500, 2500);
 
-      const bodyText = await page.evaluate(() => document.body.innerText.toLowerCase());
+      const bodyText = await page.evaluate(() =>
+        document.body?.innerText?.toLowerCase() || ""
+      ).catch(() => "");
+
       const expRange = extractYearsFromText(bodyText);
       if (!expRange) continue;
 

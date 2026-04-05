@@ -1,41 +1,75 @@
 /**
  * services/chromeHelper.js
  * ──────────────────────────────────────────────────────────────────────────
- * Puppeteer browser factory.
- * Replaces Python's chrome_helper.py (Selenium + WebDriverManager).
+ * Puppeteer browser factory — works locally AND on Render/cloud servers.
  *
- * Key improvements over the Python version:
- *  - No WinError 5 / file-lock issues (Puppeteer manages its own binary)
- *  - Single shared browser instance per scraper call (faster)
- *  - Each scraper gets its own incognito BrowserContext (isolated cookies)
- *  - Anti-bot patches applied at context level via Page.addScriptToEvaluateOnNewDocument
- *  - Automatic browser cleanup even if scraper throws
+ * Uses @sparticuz/chromium for server environments (Render, Railway, Lambda)
+ * Falls back to regular puppeteer for local development.
  *
- * Exports:
- *   makeBrowser()               → Promise<Browser>
- *   makeContext(browser)        → Promise<BrowserContext>  (incognito)
- *   makePage(context)           → Promise<Page>            (patched)
- *   withBrowser(fn)             → runs fn(browser), always closes browser
- *   withPage(browser, fn)       → runs fn(page),    always closes context
+ * Install dependencies:
+ *   npm install puppeteer-core @sparticuz/chromium
+ *   npm uninstall puppeteer   (if switching fully)
  *
- * Typical scraper usage:
- *   const { withBrowser, withPage } = require('../services/chromeHelper');
- *
- *   await withBrowser(async (browser) => {
- *     await withPage(browser, async (page) => {
- *       await page.goto('https://...');
- *       // scrape
- *     });
- *   });
+ * Or keep both and control via env:
+ *   PUPPETEER_USE_SYSTEM_CHROME=true  → uses local Chrome (dev)
+ *   (default)                         → uses @sparticuz/chromium (server)
  * ──────────────────────────────────────────────────────────────────────────
  */
 
 "use strict";
 
-const puppeteer = require("puppeteer");
+const IS_PRODUCTION = process.env.NODE_ENV === "production" ||
+                      !!process.env.RENDER ||
+                      !!process.env.RAILWAY_ENVIRONMENT;
 
-// ── Launch args (mirrors Python chrome_helper options) ────────────────────────
-const LAUNCH_ARGS = [
+// ── Lazy-load the right puppeteer + chromium ──────────────────────────────────
+let _puppeteer;
+let _chromium;
+
+function getPuppeteer() {
+  if (!_puppeteer) {
+    try {
+      // Try puppeteer-core first (recommended for servers)
+      _puppeteer = require("puppeteer-core");
+    } catch {
+      // Fall back to full puppeteer (local dev)
+      _puppeteer = require("puppeteer");
+    }
+  }
+  return _puppeteer;
+}
+
+function getChromium() {
+  if (!_chromium) {
+    try {
+      _chromium = require("@sparticuz/chromium");
+    } catch {
+      _chromium = null;
+    }
+  }
+  return _chromium;
+}
+
+// ── Launch args for server environments ───────────────────────────────────────
+const SERVER_ARGS = [
+  "--no-sandbox",
+  "--disable-setuid-sandbox",
+  "--disable-dev-shm-usage",
+  "--disable-gpu",
+  "--no-zygote",
+  "--single-process",
+  "--disable-extensions",
+  "--disable-notifications",
+  "--window-size=1920,1080",
+  "--disable-blink-features=AutomationControlled",
+  "--disable-infobars",
+  "--ignore-certificate-errors",
+  "--disable-web-security",
+  "--allow-running-insecure-content",
+];
+
+// ── Launch args for local development ─────────────────────────────────────────
+const LOCAL_ARGS = [
   "--no-sandbox",
   "--disable-setuid-sandbox",
   "--disable-dev-shm-usage",
@@ -61,12 +95,10 @@ const VIEWPORT = {
   hasTouch: false,
 };
 
-// ── Anti-bot script injected into every new page ──────────────────────────────
+// ── Anti-bot script ───────────────────────────────────────────────────────────
 const ANTI_BOT_SCRIPT = `
-  // Hide webdriver flag only
   Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
 
-  // Override permissions query safely when available
   const originalQuery = window.navigator.permissions?.query?.bind(window.navigator.permissions);
   if (originalQuery) {
     window.navigator.permissions.query = (parameters) =>
@@ -80,22 +112,56 @@ const ANTI_BOT_SCRIPT = `
 // ── makeBrowser ───────────────────────────────────────────────────────────────
 
 /**
- * Launch a new Puppeteer browser.
- * Reads PUPPETEER_HEADLESS from .env (default: true).
+ * Launch a Puppeteer browser.
+ * Auto-detects environment and uses appropriate Chrome binary.
  *
- * @returns {Promise<import('puppeteer').Browser>}
+ * @returns {Promise<import('puppeteer-core').Browser>}
  */
 async function makeBrowser() {
-  const headless = process.env.PUPPETEER_HEADLESS !== "false";
+  const puppeteer = getPuppeteer();
+  const chromium  = getChromium();
 
-  const browser = await puppeteer.launch({
-    headless,
-    args: LAUNCH_ARGS,
-    defaultViewport: { width: 1920, height: 1080 },
-    ignoreHTTPSErrors: true,
-  });
+  let launchOptions;
 
-  console.log(`  [Chrome] Browser launched (headless=${headless})`);
+  if (IS_PRODUCTION && chromium) {
+    // ── Server / Render / Railway ─────────────────────────────────────────
+    console.log("  [Chrome] Using @sparticuz/chromium (server mode)");
+
+    // @sparticuz/chromium v120+ supports this
+    chromium.setHeadlessMode = true;
+    chromium.setGraphicsMode  = false;
+
+    launchOptions = {
+      args:            [...chromium.args, ...SERVER_ARGS],
+      defaultViewport: chromium.defaultViewport || VIEWPORT,
+      executablePath:  await chromium.executablePath(),
+      headless:        chromium.headless ?? true,
+      ignoreHTTPSErrors: true,
+    };
+  } else if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    // ── Explicit path set in env (e.g. /usr/bin/chromium-browser) ────────
+    console.log(`  [Chrome] Using executable: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
+    launchOptions = {
+      headless:          true,
+      args:              SERVER_ARGS,
+      executablePath:    process.env.PUPPETEER_EXECUTABLE_PATH,
+      defaultViewport:   VIEWPORT,
+      ignoreHTTPSErrors: true,
+    };
+  } else {
+    // ── Local development — bundled Chromium ──────────────────────────────
+    const headless = process.env.PUPPETEER_HEADLESS !== "false";
+    console.log(`  [Chrome] Using bundled Chromium (headless=${headless})`);
+    launchOptions = {
+      headless,
+      args:              LOCAL_ARGS,
+      defaultViewport:   VIEWPORT,
+      ignoreHTTPSErrors: true,
+    };
+  }
+
+  const browser = await puppeteer.launch(launchOptions);
+  console.log("  [Chrome] Browser launched ✓");
   return browser;
 }
 
@@ -104,10 +170,9 @@ async function makeBrowser() {
 
 /**
  * Create an isolated incognito BrowserContext.
- * Each scraper keyword gets its own context so cookies never bleed over.
  *
- * @param {import('puppeteer').Browser} browser
- * @returns {Promise<import('puppeteer').BrowserContext>}
+ * @param {import('puppeteer-core').Browser} browser
+ * @returns {Promise<import('puppeteer-core').BrowserContext>}
  */
 async function makeContext(browser) {
   return browser.createBrowserContext();
@@ -117,42 +182,39 @@ async function makeContext(browser) {
 // ── makePage ──────────────────────────────────────────────────────────────────
 
 /**
- * Open a new Page inside a context, with:
- *  - realistic User-Agent
- *  - anti-bot JS injected before any page script runs
- *  - sensible navigation timeout
+ * Open a new Page with realistic headers and optional anti-bot patches.
  *
- * @param {import('puppeteer').BrowserContext} context
- * @returns {Promise<import('puppeteer').Page>}
+ * @param {import('puppeteer-core').BrowserContext} context
+ * @param {object} options
+ * @param {boolean} [options.skipAntiBot=false]
+ * @returns {Promise<import('puppeteer-core').Page>}
  */
 async function makePage(context, options = {}) {
   const page = await context.newPage();
 
-  // Set realistic User-Agent
   await page.setUserAgent(USER_AGENT);
-
-  // Set viewport and realistic browser headers.
   await page.setViewport(VIEWPORT);
   await page.setExtraHTTPHeaders({
-    "Accept-Language":       "en-US,en;q=0.9",
-    "Accept":                "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language":           "en-US,en;q=0.9",
+    "Accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
     "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Site":        "none",
-    "Sec-Fetch-Mode":        "navigate",
-    "Sec-Fetch-Dest":        "document",
-    "Sec-CH-UA":             '"Chromium";v="124", "Google Chrome";v="124", "Not:A-Brand";v="99"',
-    "Sec-CH-UA-Mobile":      "?0",
-    "Sec-CH-UA-Platform":    '"Windows"',
+    "Sec-Fetch-Site":            "none",
+    "Sec-Fetch-Mode":            "navigate",
+    "Sec-Fetch-Dest":            "document",
+    "Sec-CH-UA":                 '"Chromium";v="124", "Google Chrome";v="124", "Not:A-Brand";v="99"',
+    "Sec-CH-UA-Mobile":          "?0",
+    "Sec-CH-UA-Platform":        '"Windows"',
   });
 
-  // Inject anti-bot patches before ANY page JS runs, unless explicitly skipped.
-  if (!options.skipAntiBot) {
+  // Skip anti-bot on server (evaluateOnNewDocument can be unstable on some builds)
+  const skipAntiBot = options.skipAntiBot ?? IS_PRODUCTION;
+  if (!skipAntiBot) {
     await page.evaluateOnNewDocument(ANTI_BOT_SCRIPT);
   }
 
-  // Default navigation timeout: 30s (same feel as Python's implicit waits)
-  page.setDefaultNavigationTimeout(30_000);
-  page.setDefaultTimeout(15_000);
+  // Increased timeouts for slow server environments
+  page.setDefaultNavigationTimeout(IS_PRODUCTION ? 60_000 : 30_000);
+  page.setDefaultTimeout(IS_PRODUCTION ? 30_000 : 15_000);
 
   return page;
 }
@@ -163,14 +225,8 @@ async function makePage(context, options = {}) {
 /**
  * Run an async function with a browser, guaranteed cleanup.
  *
- * @param {(browser: import('puppeteer').Browser) => Promise<T>} fn
+ * @param {(browser: import('puppeteer-core').Browser) => Promise<T>} fn
  * @returns {Promise<T>}
- *
- * @example
- * const jobs = await withBrowser(async (browser) => {
- *   // use browser
- *   return [...];
- * });
  */
 async function withBrowser(fn) {
   const browser = await makeBrowser();
@@ -187,19 +243,11 @@ async function withBrowser(fn) {
 
 /**
  * Run an async function with a page inside a fresh incognito context.
- * Closes the context (and its page) when done.
  *
- * @param {import('puppeteer').Browser} browser
- * @param {(page: import('puppeteer').Page) => Promise<T>} fn
+ * @param {import('puppeteer-core').Browser} browser
+ * @param {(page: import('puppeteer-core').Page) => Promise<T>} fn
+ * @param {object} [options]
  * @returns {Promise<T>}
- *
- * @example
- * await withBrowser(async (browser) => {
- *   const results = await withPage(browser, async (page) => {
- *     await page.goto('https://naukri.com/...');
- *     return scrapeCards(page);
- *   });
- * });
  */
 async function withPage(browser, fn, options = {}) {
   const context = await makeContext(browser);
@@ -212,22 +260,26 @@ async function withPage(browser, fn, options = {}) {
 }
 
 
-// ── sleep helper (replaces Python's time.sleep + random.uniform) ──────────────
+// ── sleep ─────────────────────────────────────────────────────────────────────
 
 /**
  * Async sleep with optional random jitter.
+ * Automatically scales up on production for slower server environments.
  *
- * @param {number} minMs   minimum wait in milliseconds
- * @param {number} [maxMs] if provided, waits a random time between min and max
+ * @param {number} minMs
+ * @param {number} [maxMs]
  * @returns {Promise<void>}
- *
- * @example
- * await sleep(2000, 3500);  // wait 2–3.5 seconds
  */
 function sleep(minMs, maxMs) {
-  const ms = maxMs
-    ? Math.floor(minMs + Math.random() * (maxMs - minMs))
-    : minMs;
+  // Add 50% extra wait time on production servers
+  const scale = IS_PRODUCTION ? 1.5 : 1;
+  const scaledMin = Math.floor(minMs * scale);
+  const scaledMax = maxMs ? Math.floor(maxMs * scale) : undefined;
+
+  const ms = scaledMax
+    ? Math.floor(scaledMin + Math.random() * (scaledMax - scaledMin))
+    : scaledMin;
+
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
@@ -239,4 +291,5 @@ module.exports = {
   withBrowser,
   withPage,
   sleep,
+  IS_PRODUCTION,
 };

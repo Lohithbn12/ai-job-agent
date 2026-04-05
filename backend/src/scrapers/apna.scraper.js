@@ -2,20 +2,13 @@
  * scrapers/apna.scraper.js
  * ──────────────────────────────────────────────────────────────────────────
  * Scrapes Apna.co job listings using Puppeteer.
- * Mirrors Python apna_scraper.py logic exactly.
- *
- * Apna is app-first and JS-heavy — needs longer waits.
- * Aggressively blocks headless browsers on some runs — gracefully returns
- * empty list in that case.
- *
- * URL pattern:
- *   https://apna.co/jobs?designation={keyword}&city={city}
+ * Updated for Render/cloud server compatibility.
  * ──────────────────────────────────────────────────────────────────────────
  */
 
 "use strict";
 
-const { withBrowser, withPage, sleep } = require("../services/chromeHelper");
+const { withBrowser, withPage, sleep, IS_PRODUCTION } = require("../services/chromeHelper");
 const {
   extractYearsFromText,
   formatExpRequired,
@@ -23,7 +16,7 @@ const {
   getUserExpRange,
 } = require("../utils/expParser");
 
-const DEEP_VERIFY_LIMIT = 3;
+const DEEP_VERIFY_LIMIT = IS_PRODUCTION ? 2 : 3;
 
 
 // ── Main export ───────────────────────────────────────────────────────────────
@@ -46,16 +39,24 @@ async function collectApnaJobs(keywords, experienceLevel = "0-1", location = "")
       console.log(`[Apna] URL: ${searchUrl}`);
 
       const keywordJobs = await withPage(browser, async (page) => {
-        await page.goto(searchUrl, { waitUntil: "domcontentloaded" });
-        // Apna is very JS-heavy — needs longer wait than other boards
-        await sleep(6000, 9000);
+        try {
+          await page.goto(searchUrl, {
+            waitUntil: "domcontentloaded",
+            timeout: IS_PRODUCTION ? 60_000 : 30_000,
+          });
+        } catch (navErr) {
+          console.log(`  [Apna] Navigation error: ${navErr.message} — trying anyway`);
+        }
 
-        console.log(`  Page: ${await page.title()}`);
+        // Apna is very JS-heavy — needs longer wait
+        await sleep(IS_PRODUCTION ? 8000 : 6000, IS_PRODUCTION ? 12000 : 9000);
 
-        // Check for login wall
+        console.log(`  Page: ${await page.title().catch(() => "unknown")}`);
+
         const bodyText = await page.evaluate(() =>
-          document.body?.textContent?.toLowerCase()?.slice(0, 300) || ""
-        );
+          document.body?.textContent?.toLowerCase()?.slice(0, 500) || ""
+        ).catch(() => "");
+
         if (/sign in|log in/.test(bodyText)) {
           console.log("  [Apna] Login wall detected — skipping keyword");
           return [];
@@ -77,48 +78,39 @@ async function collectApnaJobs(keywords, experienceLevel = "0-1", location = "")
         for (const card of cards.slice(0, 12)) {
           try {
             const data = await card.evaluate((el) => {
-              const text = (sel) => el.querySelector(sel)?.textContent?.trim() || "";
-
-              // Title — try multiple selectors
               let title = "";
               for (const sel of ["[class*='jobTitle']","[class*='title']","h2","h3","strong"]) {
                 const t = el.querySelector(sel)?.textContent?.trim() || "";
                 if (t && t.length > 3) { title = t; break; }
               }
 
-              // Company
               let company = "";
               for (const sel of ["[class*='company']","[class*='employer']","[class*='org']"]) {
                 const t = el.querySelector(sel)?.textContent?.trim() || "";
                 if (t) { company = t; break; }
               }
 
-              // Location
               let loc = "";
               for (const sel of ["[class*='location']","[class*='city']","[class*='place']"]) {
                 const t = el.querySelector(sel)?.textContent?.trim() || "";
                 if (t) { loc = t; break; }
               }
 
-              // Salary
               let salary = "";
               for (const sel of ["[class*='salary']","[class*='ctc']","[class*='pay']"]) {
                 const t = el.querySelector(sel)?.textContent?.trim() || "";
                 if (t) { salary = t; break; }
               }
 
-              // Link
-              const a    = el.querySelector("a");
-              let link   = a?.href || "";
+              const a  = el.querySelector("a");
+              let link = a?.href || "";
               if (link.startsWith("/")) link = `https://apna.co${link}`;
 
-              const snippet = el.textContent.toLowerCase();
-              return { title, company, loc, salary, link, snippet };
+              return { title, company, loc, salary, link, snippet: el.textContent.toLowerCase() };
             });
 
             if (!data.title || !data.link) continue;
 
-            // ── P1 ─────────────────────────────────────────────────────────
             const expRange    = extractYearsFromText(data.snippet);
             const expReq      = formatExpRequired(expRange);
             const expVerified = expRange !== null;
@@ -132,29 +124,31 @@ async function collectApnaJobs(keywords, experienceLevel = "0-1", location = "")
             console.log(`  ${expVerified ? "✅[P1]" : "🔍[P2]"} ${data.title} @ ${data.company} | req: ${expReq || "unknown"}`);
 
             found.push({
-              title:            data.title,
-              company:          data.company,
-              location:         data.loc || city,
-              salary:           data.salary,
-              experience_level: experienceLevel,
-              exp_required:     expReq,
-              exp_mismatch:     mismatch,
+              title:             data.title,
+              company:           data.company,
+              location:          data.loc || city,
+              salary:            data.salary,
+              experience_level:  experienceLevel,
+              exp_required:      expReq,
+              exp_mismatch:      mismatch,
               exp_hard_mismatch: hardMismatch,
-              exp_verified:     expVerified,
-              apply_link:       data.link,
-              easy_apply:       false,
-              source:           "Apna",
+              exp_verified:      expVerified,
+              apply_link:        data.link,
+              easy_apply:        false,
+              source:            "Apna",
             });
           } catch (e) {
             console.log(`  Card error: ${e.message}`);
           }
         }
 
-        // ── P2 ─────────────────────────────────────────────────────────────
-        const unverified = found.filter((j) => !j.exp_verified).slice(0, DEEP_VERIFY_LIMIT);
-        if (unverified.length) {
-          console.log(`  [P2] Deep-verifying ${unverified.length} jobs...`);
-          await deepVerify(unverified, page, userMin, userMax);
+        // P2 — skip on production server
+        if (!IS_PRODUCTION) {
+          const unverified = found.filter((j) => !j.exp_verified).slice(0, DEEP_VERIFY_LIMIT);
+          if (unverified.length) {
+            console.log(`  [P2] Deep-verifying ${unverified.length} jobs...`);
+            await deepVerify(unverified, page, userMin, userMax);
+          }
         }
 
         return found;
@@ -176,11 +170,13 @@ async function deepVerify(jobs, page, userMin, userMax) {
   for (const job of jobs) {
     try {
       console.log(`    [P2] ${job.title.slice(0, 50)}`);
-      await page.goto(job.apply_link, { waitUntil: "domcontentloaded" });
-      // Apna needs more time on detail pages too
+      await page.goto(job.apply_link, { waitUntil: "domcontentloaded", timeout: 30_000 });
       await sleep(3000, 5000);
 
-      const bodyText = await page.evaluate(() => document.body.innerText.toLowerCase());
+      const bodyText = await page.evaluate(() =>
+        document.body?.innerText?.toLowerCase() || ""
+      ).catch(() => "");
+
       const expRange = extractYearsFromText(bodyText);
       if (!expRange) continue;
 

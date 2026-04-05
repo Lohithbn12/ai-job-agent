@@ -3,29 +3,19 @@
  * ──────────────────────────────────────────────────────────────────────────
  * Scrapes LinkedIn public job listings using Puppeteer.
  * No login required for public search results.
- * Mirrors Python linkedin_scraper.py logic exactly.
- *
- * URL pattern:
- *   https://www.linkedin.com/jobs/search/?keywords={q}&location={loc}
- *     &f_E={exp_codes}&sortBy=DD&f_JT=F,P,C
- *
- * Experience codes:
- *   2 = Entry level   3 = Associate
- *   4 = Mid-Senior    5 = Director   6 = Executive
+ * Updated for Render/cloud server compatibility.
  * ──────────────────────────────────────────────────────────────────────────
  */
 
 "use strict";
 
-const { withBrowser, withPage, sleep } = require("../services/chromeHelper");
+const { withBrowser, withPage, sleep, IS_PRODUCTION } = require("../services/chromeHelper");
 const {
   extractYearsFromText,
   formatExpRequired,
   checkExpMismatch,
   getUserExpRange,
 } = require("../utils/expParser");
-
-const DEEP_VERIFY_LIMIT = 3;
 
 const EXP_CODE_MAP = {
   "0-1":  "2",
@@ -40,9 +30,9 @@ const EXP_CODE_MAP = {
 
 async function collectLinkedinJobs(keywords, experienceLevel = "0-1", location = "") {
   const { min: userMin, max: userMax } = getUserExpRange(experienceLevel);
-  const expCodes  = EXP_CODE_MAP[experienceLevel] || "2";
-  const cleanKws  = cleanKeywords_(keywords);
-  const locParam  = location.split(",")[0].trim();
+  const expCodes = EXP_CODE_MAP[experienceLevel] || "2";
+  const cleanKws = cleanKeywords_(keywords);
+  const locParam = location.split(",")[0].trim();
 
   console.log(`[LinkedIn] Keywords: ${cleanKws} | Exp: ${experienceLevel} | Location: ${location}`);
 
@@ -60,20 +50,28 @@ async function collectLinkedinJobs(keywords, experienceLevel = "0-1", location =
       console.log(`[LinkedIn] URL: ${searchUrl}`);
 
       const keywordJobs = await withPage(browser, async (page) => {
-        await page.goto(searchUrl, { waitUntil: "domcontentloaded" });
-        await sleep(2000, 3000);
+        try {
+          await page.goto(searchUrl, {
+            waitUntil: "domcontentloaded",
+            timeout: IS_PRODUCTION ? 60_000 : 30_000,
+          });
+        } catch (navErr) {
+          console.log(`  [LinkedIn] Navigation error: ${navErr.message} — trying anyway`);
+        }
 
-        // Dismiss login modal if present
+        await sleep(IS_PRODUCTION ? 4000 : 2000, IS_PRODUCTION ? 6000 : 3000);
+
+        // Dismiss login modal
         await dismissModal(page);
 
         // Scroll to trigger lazy loading
         for (let i = 0; i < 3; i++) {
-          await page.evaluate(() => window.scrollBy(0, 600));
+          await page.evaluate(() => window.scrollBy(0, 600)).catch(() => {});
           await sleep(400, 800);
         }
 
         // ── Extract cards ──────────────────────────────────────────────────
-        let cards = await page.$$(
+        const cards = await page.$$(
           ".jobs-search__results-list li, " +
           "[data-occludable-job-id], " +
           ".base-card, " +
@@ -95,25 +93,19 @@ async function collectLinkedinJobs(keywords, experienceLevel = "0-1", location =
             const data = await card.evaluate((el) => {
               const text = (sel) => el.querySelector(sel)?.textContent?.trim() || "";
 
-              // Title
               const title = text(
                 ".base-search-card__title, h3.base-search-card__title, " +
                 ".job-search-card__title, h3"
               );
-
-              // Company
               const company = text(
                 ".base-search-card__subtitle a, h4.base-search-card__subtitle, " +
                 ".job-search-card__company-name, .base-search-card__subtitle"
               );
-
-              // Location
               const loc = text(
                 ".job-search-card__location, .base-search-card__metadata span, " +
                 ".base-search-card__metadata"
               );
 
-              // Link
               const linkEl = el.querySelector(
                 "a.base-card__full-link, a.base-search-card__full-link, " +
                 "a[href*='linkedin.com/jobs/view'], a[href*='/jobs/']"
@@ -129,7 +121,6 @@ async function collectLinkedinJobs(keywords, experienceLevel = "0-1", location =
 
             if (!data.title || !data.link) continue;
 
-            // ── P1 ─────────────────────────────────────────────────────────
             const expRange    = extractYearsFromText(data.snippet);
             const expReq      = formatExpRequired(expRange);
             const expVerified = expRange !== null;
@@ -146,18 +137,18 @@ async function collectLinkedinJobs(keywords, experienceLevel = "0-1", location =
             );
 
             found.push({
-              title:            data.title,
-              company:          data.company,
-              location:         data.loc,
-              salary:           "",   // LinkedIn rarely shows salary on card
-              experience_level: experienceLevel,
-              exp_required:     expReq,
-              exp_mismatch:     mismatch,
+              title:             data.title,
+              company:           data.company,
+              location:          data.loc,
+              salary:            "",
+              experience_level:  experienceLevel,
+              exp_required:      expReq,
+              exp_mismatch:      mismatch,
               exp_hard_mismatch: hardMismatch,
-              exp_verified:     expVerified,
-              apply_link:       data.link,
-              easy_apply:       data.easyApply,
-              source:           "LinkedIn",
+              exp_verified:      expVerified,
+              apply_link:        data.link,
+              easy_apply:        data.easyApply,
+              source:            "LinkedIn",
             });
           } catch (e) {
             console.log(`  Card error: ${e.message}`);
@@ -189,7 +180,7 @@ async function dismissModal(page) {
       );
       btns.forEach((b) => b.click());
     });
-    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape").catch(() => {});
   } catch { /* silent */ }
 }
 

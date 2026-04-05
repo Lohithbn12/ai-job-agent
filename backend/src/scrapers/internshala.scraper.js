@@ -2,20 +2,13 @@
  * scrapers/internshala.scraper.js
  * ──────────────────────────────────────────────────────────────────────────
  * Scrapes Internshala job listings using Puppeteer.
- * Mirrors Python internshala_scraper.py logic exactly.
- *
- * URL pattern:
- *   https://internshala.com/jobs/{keyword}-jobs/
- *   https://internshala.com/jobs/{keyword}-jobs-in-{city}/
- *
- * Note: Internshala has no URL-level experience filter.
- * Relies entirely on P1 card regex + P2 full-page verify.
+ * Updated for Render/cloud server compatibility.
  * ──────────────────────────────────────────────────────────────────────────
  */
 
 "use strict";
 
-const { withBrowser, withPage, sleep } = require("../services/chromeHelper");
+const { withBrowser, withPage, sleep, IS_PRODUCTION } = require("../services/chromeHelper");
 const {
   extractYearsFromText,
   formatExpRequired,
@@ -23,7 +16,7 @@ const {
   getUserExpRange,
 } = require("../utils/expParser");
 
-const DEEP_VERIFY_LIMIT = 3;
+const DEEP_VERIFY_LIMIT = IS_PRODUCTION ? 2 : 3;
 
 
 // ── Main export ───────────────────────────────────────────────────────────────
@@ -48,8 +41,16 @@ async function collectInternshalaJobs(keywords, experienceLevel = "0-1", locatio
       console.log(`[Internshala] URL: ${searchUrl}`);
 
       const keywordJobs = await withPage(browser, async (page) => {
-        await page.goto(searchUrl, { waitUntil: "domcontentloaded" });
-        await sleep(2000, 3000);
+        try {
+          await page.goto(searchUrl, {
+            waitUntil: "domcontentloaded",
+            timeout: IS_PRODUCTION ? 60_000 : 30_000,
+          });
+        } catch (navErr) {
+          console.log(`  [Internshala] Navigation error: ${navErr.message} — trying anyway`);
+        }
+
+        await sleep(IS_PRODUCTION ? 4000 : 2000, IS_PRODUCTION ? 6000 : 3000);
 
         // ── Extract cards ──────────────────────────────────────────────────
         const cards = await page.$$(
@@ -66,21 +67,11 @@ async function collectInternshalaJobs(keywords, experienceLevel = "0-1", locatio
             const data = await card.evaluate((el) => {
               const text = (sel) => el.querySelector(sel)?.textContent?.trim() || "";
 
-              // Title
-              const title = text(
-                ".job-title-href, .profile, h3.job-title, a.job-title, [class*='title']"
-              );
-
-              // Company
+              const title   = text(".job-title-href, .profile, h3.job-title, a.job-title, [class*='title']");
               const company = text(".company-name, .company_name, [class*='company']");
+              const loc     = text(".location_link, .location, [class*='location']");
+              const salary  = text(".stipend, .salary, [class*='salary'], [class*='stipend']");
 
-              // Location
-              const loc = text(".location_link, .location, [class*='location']");
-
-              // Salary / Stipend
-              const salary = text(".stipend, .salary, [class*='salary'], [class*='stipend']");
-
-              // Link
               const linkSelectors = [
                 "a.job-title-href",
                 "a[href*='/jobs/detail']",
@@ -96,13 +87,11 @@ async function collectInternshalaJobs(keywords, experienceLevel = "0-1", locatio
                 if (a?.href?.includes("internshala.com")) link = a.href;
               }
 
-              const snippet = el.textContent.toLowerCase();
-              return { title, company, loc, salary, link, snippet };
+              return { title, company, loc, salary, link, snippet: el.textContent.toLowerCase() };
             });
 
             if (!data.title || !data.link) continue;
 
-            // ── P1 ─────────────────────────────────────────────────────────
             const expRange    = extractYearsFromText(data.snippet);
             const expReq      = formatExpRequired(expRange);
             const expVerified = expRange !== null;
@@ -116,29 +105,31 @@ async function collectInternshalaJobs(keywords, experienceLevel = "0-1", locatio
             console.log(`  ${expVerified ? "✅[P1]" : "🔍[P2]"} ${data.title} @ ${data.company} | req: ${expReq || "unknown"}`);
 
             found.push({
-              title:            data.title,
-              company:          data.company,
-              location:         data.loc,
-              salary:           data.salary,
-              experience_level: experienceLevel,
-              exp_required:     expReq,
-              exp_mismatch:     mismatch,
+              title:             data.title,
+              company:           data.company,
+              location:          data.loc,
+              salary:            data.salary,
+              experience_level:  experienceLevel,
+              exp_required:      expReq,
+              exp_mismatch:      mismatch,
               exp_hard_mismatch: hardMismatch,
-              exp_verified:     expVerified,
-              apply_link:       data.link,
-              easy_apply:       false,
-              source:           "Internshala",
+              exp_verified:      expVerified,
+              apply_link:        data.link,
+              easy_apply:        false,
+              source:            "Internshala",
             });
           } catch (e) {
             console.log(`  Card error: ${e.message}`);
           }
         }
 
-        // ── P2 ─────────────────────────────────────────────────────────────
-        const unverified = found.filter((j) => !j.exp_verified).slice(0, DEEP_VERIFY_LIMIT);
-        if (unverified.length) {
-          console.log(`  [P2] Deep-verifying ${unverified.length} jobs...`);
-          await deepVerify(unverified, page, userMin, userMax);
+        // P2 — skip on production server
+        if (!IS_PRODUCTION) {
+          const unverified = found.filter((j) => !j.exp_verified).slice(0, DEEP_VERIFY_LIMIT);
+          if (unverified.length) {
+            console.log(`  [P2] Deep-verifying ${unverified.length} jobs...`);
+            await deepVerify(unverified, page, userMin, userMax);
+          }
         }
 
         return found;
@@ -160,10 +151,13 @@ async function deepVerify(jobs, page, userMin, userMax) {
   for (const job of jobs) {
     try {
       console.log(`    [P2] ${job.title.slice(0, 50)}`);
-      await page.goto(job.apply_link, { waitUntil: "domcontentloaded" });
+      await page.goto(job.apply_link, { waitUntil: "domcontentloaded", timeout: 30_000 });
       await sleep(1500, 2500);
 
-      const bodyText = await page.evaluate(() => document.body.innerText.toLowerCase());
+      const bodyText = await page.evaluate(() =>
+        document.body?.innerText?.toLowerCase() || ""
+      ).catch(() => "");
+
       const expRange = extractYearsFromText(bodyText);
       if (!expRange) continue;
 

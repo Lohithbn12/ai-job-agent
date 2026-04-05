@@ -2,17 +2,13 @@
  * scrapers/naukri.scraper.js
  * ──────────────────────────────────────────────────────────────────────────
  * Scrapes Naukri.com job listings using Puppeteer.
- * Mirrors Python naukri_scraper.py logic exactly.
- *
- * URL pattern:
- *   https://www.naukri.com/{keyword}-jobs-in-{city}?experience={min}&to={max}&jobAge=7
- *   https://www.naukri.com/{keyword}-jobs?experience={min}&to={max}&jobAge=7
+ * Updated for Render/cloud server compatibility.
  * ──────────────────────────────────────────────────────────────────────────
  */
 
 "use strict";
 
-const { withBrowser, withPage, sleep } = require("../services/chromeHelper");
+const { withBrowser, withPage, sleep, IS_PRODUCTION } = require("../services/chromeHelper");
 const {
   extractYearsFromText,
   formatExpRequired,
@@ -20,20 +16,21 @@ const {
   getUserExpRange,
 } = require("../utils/expParser");
 
-const DEEP_VERIFY_LIMIT = 3;
+const DEEP_VERIFY_LIMIT = IS_PRODUCTION ? 2 : 3; // fewer on server to save time
+
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
 async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "") {
   const { min: userMin, max: userMax } = getUserExpRange(experienceLevel);
-  const cleanKeywords = cleanKeywords_(keywords);
+  const cleanKws = cleanKeywords_(keywords);
 
-  console.log(`[Naukri] Keywords: ${cleanKeywords} | Exp: ${experienceLevel} | Location: ${location}`);
+  console.log(`[Naukri] Keywords: ${cleanKws} | Exp: ${experienceLevel} | Location: ${location}`);
 
   const jobs = [];
 
   await withBrowser(async (browser) => {
-    for (const keyword of cleanKeywords) {
+    for (const keyword of cleanKws) {
       const kwSlug  = keyword.toLowerCase().replace(/\s+/g, "-");
       const locSlug = location.split(",")[0].trim().toLowerCase().replace(/\s+/g, "-");
 
@@ -48,7 +45,6 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
           "https://www.google.com/",
           "https://www.bing.com/",
           "https://search.yahoo.com/",
-          "https://www.duckduckgo.com/",
         ];
         await page.setExtraHTTPHeaders({
           referer: referers[Math.floor(Math.random() * referers.length)],
@@ -57,21 +53,38 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
           "Sec-CH-UA-Platform": '"Windows"',
           "Upgrade-Insecure-Requests": "1",
         });
-        await page.goto(searchUrl, { waitUntil: "networkidle2", timeout: 45000 });
-        await page.waitForSelector("[data-job-id], div[class*='job']", { timeout: 15000 }).catch(() => {});
-        await sleep(4000, 6000);
 
-        const pageTitle = await page.title();
-        const bodyText = await page.evaluate(() => document.body.innerText.toLowerCase());
-        if (/access denied|you don't have permission|forbidden|error/.test(bodyText)) {
-          console.log(`  [Naukri] Blocked by access denied page: ${pageTitle}`);
+        try {
+          await page.goto(searchUrl, {
+            waitUntil: IS_PRODUCTION ? "domcontentloaded" : "networkidle2",
+            timeout: IS_PRODUCTION ? 60_000 : 45_000,
+          });
+        } catch (navErr) {
+          console.log(`  [Naukri] Navigation error: ${navErr.message} — trying anyway`);
+        }
+
+        // Wait for cards to appear — longer on server
+        await page.waitForSelector(
+          "[data-job-id], div[class*='job'], article[class*='jobCard']",
+          { timeout: IS_PRODUCTION ? 20_000 : 15_000 }
+        ).catch(() => {});
+
+        await sleep(IS_PRODUCTION ? 5000 : 4000, IS_PRODUCTION ? 8000 : 6000);
+
+        // Check for blocks
+        const bodyText = await page.evaluate(() =>
+          document.body?.innerText?.toLowerCase() || ""
+        ).catch(() => "");
+
+        if (/access denied|you don't have permission|forbidden/.test(bodyText)) {
+          console.log("  [Naukri] Blocked — skipping keyword");
           return [];
         }
 
+        const pageTitle = await page.title().catch(() => "");
         console.log(`  Page: ${pageTitle}`);
 
         // ── Extract cards ──────────────────────────────────────────────────
-        // Try multiple selector patterns (Naukri updates their HTML frequently)
         let cards = await page.$$(
           "article[class*='jobCard'], " +
           "div[class*='jobCard'], " +
@@ -82,15 +95,13 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
           "[data-job-id], " +
           "li[class*='job']"
         );
-        
         console.log(`  Cards (attempt 1): ${cards.length}`);
+
         if (!cards.length) {
-          // Fallback: look for any container with job links
-          cards = await page.$$("article, [class*='srp'], [class*='container'], div.jobTuple");
+          cards = await page.$$("article, [class*='srp'], div.jobTuple");
           console.log(`  Cards (attempt 2): ${cards.length}`);
         }
-        
-        console.log(`  Cards: ${cards.length}`);
+
         if (!cards.length) return [];
 
         const found = [];
@@ -99,26 +110,16 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
           try {
             const data = await card.evaluate((el) => {
               const text = (sel) => el.querySelector(sel)?.textContent?.trim() || "";
-              const attr = (sel, a) => el.querySelector(sel)?.getAttribute(a) || "";
 
-              // Title
               const titleEl = el.querySelector("a.title, .title a, a.jobTitle, [class*='title'] a, a[title]");
               const title   = titleEl?.getAttribute("title") || titleEl?.textContent?.trim() || "";
 
-              // Company
               const company = text("a.comp-name, .comp-name, [class*='company'], .companyInfo a");
-
-              // Location
-              const loc = text(".locWdth, [class*='location'], .location, li.location span");
-
-              // Salary
-              const salRaw = text(".sal, [class*='salary'], .salary, li.salary span");
-              const salary = ["not disclosed", "not Disclosed"].includes(salRaw.toLowerCase()) ? "" : salRaw;
-
-              // Experience field (Naukri advantage: dedicated exp field on card)
+              const loc     = text(".locWdth, [class*='location'], .location, li.location span");
+              const salRaw  = text(".sal, [class*='salary'], .salary, li.salary span");
+              const salary  = /not disclosed/i.test(salRaw) ? "" : salRaw;
               const expText = text(".expwdth, [class*='experience'], li.experience, li.exp span, [class*='exp']");
 
-              // Link
               const linkEl = el.querySelector("a.title, a.jobTitle, [class*='title'] a, a[href*='naukri.com']");
               const link   = linkEl?.href || "";
 
@@ -127,9 +128,8 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
 
             if (!data.title || !data.link) continue;
 
-            // ── P1: exp from card ──────────────────────────────────────────
-            const expRange   = extractYearsFromText(data.expText) || extractYearsFromText(data.snippet);
-            const expReq     = formatExpRequired(expRange);
+            const expRange    = extractYearsFromText(data.expText) || extractYearsFromText(data.snippet);
+            const expReq      = formatExpRequired(expRange);
             const expVerified = expRange !== null;
             const { hardDrop, mismatch, hardMismatch } = checkExpMismatch(expRange, userMin, userMax);
 
@@ -141,29 +141,31 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
             console.log(`  ${expVerified ? "✅[P1]" : "🔍[P2]"} ${data.title} @ ${data.company} | req: ${expReq || "unknown"}`);
 
             found.push({
-              title:            data.title,
-              company:          data.company,
-              location:         data.loc,
-              salary:           data.salary,
-              experience_level: experienceLevel,
-              exp_required:     expReq,
-              exp_mismatch:     mismatch,
+              title:             data.title,
+              company:           data.company,
+              location:          data.loc,
+              salary:            data.salary,
+              experience_level:  experienceLevel,
+              exp_required:      expReq,
+              exp_mismatch:      mismatch,
               exp_hard_mismatch: hardMismatch,
-              exp_verified:     expVerified,
-              apply_link:       data.link,
-              easy_apply:       false,
-              source:           "Naukri",
+              exp_verified:      expVerified,
+              apply_link:        data.link,
+              easy_apply:        false,
+              source:            "Naukri",
             });
           } catch (e) {
             console.log(`  Card error: ${e.message}`);
           }
         }
 
-        // ── P2: deep verify unverified ─────────────────────────────────────
-        const unverified = found.filter((j) => !j.exp_verified).slice(0, DEEP_VERIFY_LIMIT);
-        if (unverified.length) {
-          console.log(`  [P2] Deep-verifying ${unverified.length} jobs...`);
-          await deepVerify(unverified, page, userMin, userMax);
+        // ── P2: deep verify (skip on server to save time) ─────────────────
+        if (!IS_PRODUCTION) {
+          const unverified = found.filter((j) => !j.exp_verified).slice(0, DEEP_VERIFY_LIMIT);
+          if (unverified.length) {
+            console.log(`  [P2] Deep-verifying ${unverified.length} jobs...`);
+            await deepVerify(unverified, page, userMin, userMax);
+          }
         }
 
         return found;
@@ -185,20 +187,21 @@ async function deepVerify(jobs, page, userMin, userMax) {
   for (const job of jobs) {
     try {
       console.log(`    [P2] ${job.title.slice(0, 50)}`);
-      await page.goto(job.apply_link, { waitUntil: "domcontentloaded" });
+      await page.goto(job.apply_link, { waitUntil: "domcontentloaded", timeout: 30_000 });
       await sleep(1500, 2500);
 
-      const bodyText = await page.evaluate(() => document.body.innerText.toLowerCase());
+      const bodyText = await page.evaluate(() =>
+        document.body?.innerText?.toLowerCase() || ""
+      ).catch(() => "");
+
       const expRange = extractYearsFromText(bodyText);
       if (!expRange) continue;
 
-      job.exp_required = formatExpRequired(expRange);
+      job.exp_required  = formatExpRequired(expRange);
       job.exp_verified  = true;
-
       const { hardDrop, mismatch, hardMismatch } = checkExpMismatch(expRange, userMin, userMax);
       job.exp_mismatch      = mismatch || hardDrop;
       job.exp_hard_mismatch = hardMismatch || hardDrop;
-
       console.log(`    [P2] ${hardDrop ? "MISMATCH" : "OK"}: ${job.exp_required}`);
     } catch (e) {
       console.log(`    [P2] Error: ${e.message}`);

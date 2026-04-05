@@ -20,17 +20,21 @@ const ANIM_CSS = `
   .ocean-input:focus { outline: none !important; }
 
   /* ── Auth Layout ── */
-  .auth-card {
-    display: flex;
-    width: 100%;
-    max-width: 860px;
-    min-height: 520px;
-    border-radius: 20px;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.06);
-    box-shadow: 0 40px 80px rgba(0,0,0,0.6);
-    animation: fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) forwards;
-  }
+  
+.auth-card {
+  display: flex;
+  width: 100%;
+  max-width: 920px;
+  min-height: 560px;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.55);
+  animation: fadeUp 0.65s cubic-bezier(0.22,1,0.36,1) forwards;
+  backdrop-filter: blur(12px);
+}
+
+
   .auth-left {
     width: 42%;
     background: linear-gradient(180deg, #0c1a3d 0%, #0f2854 50%, #0c1a3d 100%);
@@ -42,14 +46,7 @@ const ANIM_CSS = `
     position: relative;
     overflow: hidden;
   }
-  .auth-right {
-    flex: 1;
-    background: #020b1a;
-    padding: 48px 44px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
+  .auth-right { flex: 1; background: linear-gradient(180deg, #020b1a 0%, #071426 100%); padding: 56px 48px; display: flex; flex-direction: column; justify-content: center; }
 
   /* ── Mobile: stack vertically, hide left panel ── */
   @media (max-width: 640px) {
@@ -255,11 +252,7 @@ function LoginPage({ onLogin }) {
       {/* ── RIGHT PANEL ── */}
       <div className="auth-right">
         <div style={{ marginBottom:24 }}>
-          <h1 className="auth-heading" style={{
-            fontSize:24, fontWeight:700,
-            color:"rgba(255,255,255,0.9)",
-            letterSpacing:"-0.6px", marginBottom:6,
-          }}>Welcome back</h1>
+          <h1 className="auth-heading" style={{ fontSize: 28, fontWeight: 800, color: "rgba(255,255,255,0.95)", letterSpacing: "-0.8px", marginBottom: 8 }} >Welcome back</h1>
           <p className="auth-sub" style={{ fontSize:13, color:"rgba(255,255,255,0.3)", lineHeight:1.5 }}>
             Sign in to your dashboard
           </p>
@@ -358,16 +351,22 @@ function LoginPage({ onLogin }) {
 
           {/* Submit */}
           <button type="submit" disabled={loading}
-            style={{
-              marginTop:4, padding:"14px",
-              background: loading ? "rgba(59,130,246,0.2)" : "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-              border:"1px solid rgba(59,130,246,0.3)",
-              borderRadius:11, fontSize:15, fontWeight:700, color:"white",
-              cursor: loading ? "not-allowed" : "pointer",
-              display:"flex", alignItems:"center", justifyContent:"center", gap:9,
-              boxShadow: loading ? "none" : "0 6px 24px rgba(59,130,246,0.4), inset 0 1px 0 rgba(255,255,255,0.1)",
-              transition:"all 0.2s",
-            }}
+            
+style={{
+  width: "100%",
+  padding: "14px",
+  borderRadius: 12,
+  border: "none",
+  background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+  color: "white",
+  fontWeight: 700,
+  fontSize: 14,
+  cursor: "pointer",
+  boxShadow: "0 6px 18px rgba(59,130,246,0.35)",
+  transition: "all 0.2s ease"
+}}
+
+
             onMouseEnter={e => { if (!loading) { e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 10px 32px rgba(59,130,246,0.5)"; }}}
             onMouseLeave={e => { e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow="0 6px 24px rgba(59,130,246,0.4), inset 0 1px 0 rgba(255,255,255,0.1)"; }}
           >

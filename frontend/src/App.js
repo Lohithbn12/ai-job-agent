@@ -61,8 +61,34 @@ const MODE_LABELS = {
 // ── Stat card ─────────────────────────────────────────────────────────────────
 function StatCard({ label, value, icon, color }) {
   return (
-    <div style={{ background: "white", border: "1px solid rgba(30,111,212,0.1)", borderRadius: 12, padding: "18px 20px", display: "flex", alignItems: "center", gap: 14, boxShadow: "0 1px 3px rgba(30,111,212,0.06)" }}>
-      <div style={{ width: 44, height: 44, borderRadius: 12, background: `${color}18`, border: `1px solid ${color}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{icon}</div>
+    <div
+  style={{
+    background: "white",
+    border: "1px solid rgba(30,111,212,0.08)",
+    borderRadius: 18,
+    padding: "20px 22px",
+    display: "flex",
+    alignItems: "center",
+    gap: 16,
+    boxShadow: "0 6px 18px rgba(30,111,212,0.08)",
+    transition: "all 0.25s ease",
+    cursor: "pointer"
+  }}
+>
+      <div
+  style={{
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    background: `${color}15`,
+    border: `1px solid ${color}30`,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 22,
+    flexShrink: 0
+  }}
+>{icon}</div>
       <div>
         <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: 26, fontWeight: 800, color: "#0f172a", lineHeight: 1 }}>{value}</div>
         <div style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 3, fontWeight: 500 }}>{label}</div>
@@ -504,35 +530,50 @@ export default function App() {
             {/* ── HOME ──────────────────────────────────────────────────── */}
             {mode === "home" && (
               <div className="fade-up">
-                <div style={{ marginBottom:36 }}>
-                  <div className="page-eyebrow">
-                    <span style={{ width:6, height:6, borderRadius:"50%", background:C.ocean, animation:"pulse 2s infinite" }} />
-                    AI Career Platform
-                  </div>
-                  <h1 className="page-title">Welcome back, {firstName} 👋</h1>
-                  <p className="page-subtitle">Your complete AI-powered career suite — job search, resume, interview prep and more.</p>
-                </div>
+                <div className="welcome-banner">
+  <div className="welcome-badge">
+    <span className="welcome-dot" />
+    AI Career Platform
+  </div>
 
-                {userStats.total_users > 0 && (
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:12, marginBottom:32 }}>
-                    <StatCard label="Total Users"  value={userStats.total_users}  icon="👥" color={C.ocean} />
-                    <StatCard label="Online Now"   value={userStats.online_count} icon="🟢" color={C.teal} />
-                    <StatCard label="Jobs Found"   value={jobs.length || "—"}     icon="💼" color="#7c3aed" />
-                    <StatCard label="Courses"      value={courses.length || "—"}  icon="🎓" color={C.sapphire} />
-                  </div>
-                )}
+  <h1 className="welcome-title">
+    Welcome back, {firstName} 👋
+  </h1>
+
+  <p className="welcome-subtitle">
+    Your complete AI-powered career suite — job search, resume, interview prep and more.
+  </p>
+</div>
+
+                <div className="stats-grid">
+    <StatCard label="Total Users"  value={userStats.total_users || "—"}  icon="👥" color={C.ocean} />
+    <StatCard label="Online Now"   value={userStats.online_count || "—"} icon="🟢" color={C.teal} />
+    <StatCard label="Jobs Found"   value={jobs.length || "—"}     icon="💼" color="#7c3aed" />
+    <StatCard label="Courses"      value={courses.length || "—"}  icon="🎓" color={C.sapphire} />
+  </div>
 
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))", gap:16 }}>
-                  {HOME_CARDS.map((card, i) => (
-                    <div key={i} className="hero-card" onClick={() => setMode(card.key)}
-                      style={{ animation:`fadeUp 0.4s ${i*0.05}s both cubic-bezier(0.22,1,0.36,1)` }}>
-                      <div className="hero-card-icon" style={{ background:card.bg, border:`1px solid ${card.border}` }}>{card.icon}</div>
-                      <div className="hero-card-title">{card.title}</div>
-                      <div className="hero-card-desc">{card.desc}</div>
-                      <div className="hero-card-arrow">Open &nbsp;→</div>
-                    </div>
-                  ))}
-                </div>
+  {HOME_CARDS.map((card, i) => (
+    <div
+      key={i}
+      className="home-dashboard-card"
+      onClick={() => setMode(card.key)}
+      style={{ animation:`fadeUp 0.4s ${i*0.05}s both cubic-bezier(0.22,1,0.36,1)` }}
+    >
+      <div
+        className="home-card-icon"
+        style={{ background:card.bg, border:`1px solid ${card.border}` }}
+      >
+        {card.icon}
+      </div>
+
+      <div className="home-card-title">{card.title}</div>
+      <div className="home-card-desc">{card.desc}</div>
+
+      <div className="hero-card-arrow">Open &nbsp;→</div>
+    </div>
+  ))}
+</div>
               </div>
             )}
 
@@ -681,63 +722,237 @@ export default function App() {
                       </div>
                     ) : (
                       <div className="card-grid">
-                        {visibleJobs.map((job, i) => {
-                          const srcCfg = SOURCE_CONFIG[job.source?.toLowerCase()] || { label:job.source, color:"#64748b", dot:C.ocean };
-                          return (
-                            <div key={i} className="job-card" style={{ background:"white", border:`1px solid ${C.border}`, borderRadius:14, padding:22, display:"flex", flexDirection:"column", boxShadow:"0 1px 3px rgba(30,111,212,0.06)", animation:`fadeUp .4s ${Math.min(i*0.03,0.35)}s both cubic-bezier(.22,1,.36,1)` }}>
-                              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:14 }}>
-                                <span style={{ padding:"3px 10px", background:`${srcCfg.dot}15`, color:srcCfg.color, borderRadius:20, fontSize:10.5, fontWeight:700, border:`1px solid ${srcCfg.dot}30` }}>{srcCfg.label || job.source}</span>
-                                {job.posted_date && <span style={{ fontSize:10.5, color:"#94a3b8" }}>{job.posted_date}</span>}
-                              </div>
-                              <h3 style={{ fontFamily:"'Outfit',sans-serif", fontSize:16, fontWeight:700, color:"#0f172a", lineHeight:1.4, marginBottom:12, flex:1, letterSpacing:"-0.2px" }}>{job.title || "Untitled Role"}</h3>
-                              <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:14 }}>
-                                <MetaRow icon="🏢" text={job.company || "Company not listed"} />
-                                {job.location && <MetaRow icon="📍" text={job.location} />}
-                                {job.salary   && <MetaRow icon="💰" text={job.salary} />}
-                                <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-                                  <span style={{ padding:"2px 9px", background:"rgba(30,111,212,0.07)", color:C.ocean, borderRadius:6, fontSize:11, fontWeight:700, border:`1px solid ${C.borderMd}` }}>{EXP_LABEL[job.experience_level] || job.experience_level}</span>
-                                  {job.exp_required && <span style={{ fontSize:11, color:"#94a3b8" }}>req. {job.exp_required}</span>}
-                                </div>
-                              </div>
-                              {job.exp_hard_mismatch && <div style={{ padding:"7px 12px", background:"rgba(225,29,72,0.05)", border:"1px solid rgba(225,29,72,0.2)", borderRadius:8, fontSize:11, color:"#e11d48", fontWeight:600, marginBottom:10 }}>⛔ Confirmed mismatch — requires {job.exp_required}</div>}
-                              {!job.exp_hard_mismatch && job.exp_mismatch && <div style={{ padding:"7px 12px", background:"rgba(217,119,6,0.05)", border:"1px solid rgba(217,119,6,0.2)", borderRadius:8, fontSize:11, color:"#b45309", marginBottom:10 }}>⚠ May not match your experience range</div>}
-                              {job.match && (
-                                <div style={{ padding:"12px 13px", background:`${job.match.bar_color}08`, border:`1px solid ${job.match.bar_color}25`, borderRadius:10, marginBottom:14 }}>
-                                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                                    <span style={{ fontSize:10.5, fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:"0.5px" }}>Application Match</span>
-                                    <span style={{ fontFamily:"'Outfit',sans-serif", fontSize:20, fontWeight:800, color:job.match.bar_color }}>{job.match.score}%</span>
-                                  </div>
-                                  <div style={{ height:4, background:"rgba(30,111,212,0.08)", borderRadius:4, overflow:"hidden", marginBottom:8 }}>
-                                    <div style={{ height:"100%", width:`${job.match.score}%`, background:job.match.bar_color, borderRadius:4, transition:"width .8s ease" }} />
-                                  </div>
-                                  <div style={{ fontSize:11, fontWeight:700, color:job.match.bar_color, marginBottom:6 }}>{job.match.grade} Match</div>
-                                  {job.match.matched_skills?.length > 0 && (
-                                    <div style={{ display:"flex", flexWrap:"wrap", gap:4, marginBottom:5 }}>
-                                      {job.match.matched_skills.slice(0,4).map((s,i) => (
-                                        <span key={i} style={{ padding:"2px 7px", background:"rgba(13,148,136,0.08)", border:"1px solid rgba(13,148,136,0.2)", borderRadius:4, fontSize:10, color:"#0d9488", fontWeight:600 }}>✓ {s}</span>
-                                      ))}
-                                    </div>
-                                  )}
-                                  {job.match.missing_skills?.length > 0 && (
-                                    <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
-                                      {job.match.missing_skills.slice(0,3).map((s,i) => (
-                                        <span key={i} style={{ padding:"2px 7px", background:"rgba(225,29,72,0.05)", border:"1px solid rgba(225,29,72,0.15)", borderRadius:4, fontSize:10, color:"#e11d48", fontWeight:600 }}>✗ {s}</span>
-                                      ))}
-                                    </div>
-                                  )}
-                                  {job.match.tip && <div style={{ fontSize:10.5, color:"#94a3b8", lineHeight:1.5, marginTop:6 }}>{job.match.tip}</div>}
-                                </div>
-                              )}
-                              <div style={{ display:"flex", gap:8, marginTop:"auto" }}>
-                                <button onClick={() => sendJobToWhatsApp(job)} style={{ padding:"10px 13px", background:"rgba(37,211,102,0.07)", border:"1px solid rgba(37,211,102,0.2)", color:"#16a34a", borderRadius:10, fontSize:13, fontWeight:700, cursor:"pointer", flexShrink:0 }}>📲</button>
-                                <a href={job.apply_link} target="_blank" rel="noreferrer"
-                                  style={{ flex:1, display:"block", textAlign:"center", padding:"10px", background:"linear-gradient(135deg,#1e6fd4,#1a5cb8)", color:"white", borderRadius:10, fontSize:13, fontWeight:700, fontFamily:"'Plus Jakarta Sans',sans-serif", textDecoration:"none", boxShadow:"0 2px 8px rgba(30,111,212,0.25)" }}>
-                                  Apply Now →
-                                </a>
-                              </div>
-                            </div>
-                          );
-                        })}
+                        ```jsx
+{visibleJobs.map((job, i) => {
+  const srcCfg =
+    SOURCE_CONFIG[job.source?.toLowerCase()] || {
+      label: job.source,
+      color: "#64748b",
+      dot: C.ocean
+    };
+
+  return (
+    <div
+      key={i}
+      className="job-card premium-job-card"
+      style={{
+        background: "white",
+        border: `1px solid ${C.border}`,
+        borderRadius: 18,
+        padding: 24,
+        display: "flex",
+        flexDirection: "column",
+        boxShadow: "0 6px 18px rgba(30,111,212,0.08)",
+        animation: `fadeUp .4s ${Math.min(
+          i * 0.03,
+          0.35
+        )}s both cubic-bezier(.22,1,.36,1)`,
+        transition: "all .25s ease"
+      }}
+    >
+      {/* Top row */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: 14
+        }}
+      >
+        <span
+          style={{
+            padding: "4px 10px",
+            background: `${srcCfg.dot}15`,
+            color: srcCfg.color,
+            borderRadius: 20,
+            fontSize: 10.5,
+            fontWeight: 700,
+            border: `1px solid ${srcCfg.dot}30`
+          }}
+        >
+          {srcCfg.label || job.source}
+        </span>
+
+        {job.posted_date && (
+          <span style={{ fontSize: 10.5, color: "#94a3b8" }}>
+            {job.posted_date}
+          </span>
+        )}
+      </div>
+
+      {/* Job title */}
+      <h3
+        style={{
+          fontFamily: "'Outfit',sans-serif",
+          fontSize: 18,
+          fontWeight: 800,
+          color: "#0f172a",
+          lineHeight: 1.45,
+          marginBottom: 14,
+          flex: 1,
+          letterSpacing: "-0.3px"
+        }}
+      >
+        {job.title || "Untitled Role"}
+      </h3>
+
+      {/* Meta */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+          marginBottom: 14
+        }}
+      >
+        <MetaRow icon="🏢" text={job.company || "Company not listed"} />
+        {job.location && <MetaRow icon="📍" text={job.location} />}
+        {job.salary && <MetaRow icon="💰" text={job.salary} />}
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            flexWrap: "wrap"
+          }}
+        >
+          <span
+            style={{
+              padding: "3px 10px",
+              background: "rgba(30,111,212,0.07)",
+              color: C.ocean,
+              borderRadius: 8,
+              fontSize: 11,
+              fontWeight: 700,
+              border: `1px solid ${C.borderMd}`
+            }}
+          >
+            {EXP_LABEL[job.experience_level] ||
+              job.experience_level}
+          </span>
+
+          {job.exp_required && (
+            <span style={{ fontSize: 11, color: "#94a3b8" }}>
+              req. {job.exp_required}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Match block */}
+      {job.match && (
+        <div
+          style={{
+            padding: "14px",
+            background: `${job.match.bar_color}08`,
+            border: `1px solid ${job.match.bar_color}25`,
+            borderRadius: 12,
+            marginBottom: 14
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              marginBottom: 8
+            }}
+          >
+            <span
+              style={{
+                fontSize: 10.5,
+                fontWeight: 700,
+                color: "#94a3b8",
+                textTransform: "uppercase"
+              }}
+            >
+              Application Match
+            </span>
+
+            <span
+              style={{
+                fontFamily: "'Outfit',sans-serif",
+                fontSize: 20,
+                fontWeight: 800,
+                color: job.match.bar_color
+              }}
+            >
+              {job.match.score}%
+            </span>
+          </div>
+
+          <div
+            style={{
+              height: 5,
+              background: "rgba(30,111,212,0.08)",
+              borderRadius: 4,
+              overflow: "hidden"
+            }}
+          >
+            <div
+              style={{
+                height: "100%",
+                width: `${job.match.score}%`,
+                background: job.match.bar_color,
+                borderRadius: 4
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Buttons */}
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          marginTop: "auto"
+        }}
+      >
+        <button
+          onClick={() => sendJobToWhatsApp(job)}
+          style={{
+            padding: "10px 13px",
+            background: "rgba(37,211,102,0.07)",
+            border: "1px solid rgba(37,211,102,0.2)",
+            color: "#16a34a",
+            borderRadius: 12,
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: "pointer"
+          }}
+        >
+          📲
+        </button>
+
+        <a
+          href={job.apply_link}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            flex: 1,
+            display: "block",
+            textAlign: "center",
+            padding: "12px",
+            background:
+              "linear-gradient(135deg,#1e6fd4,#1558b0)",
+            color: "white",
+            borderRadius: 12,
+            fontSize: 13.5,
+            fontWeight: 700,
+            textDecoration: "none",
+            boxShadow:
+              "0 4px 14px rgba(30,111,212,0.25)"
+          }}
+        >
+          Apply Now →
+        </a>
+      </div>
+    </div>
+  );
+})}
+```
+
                       </div>
                     )}
                   </div>

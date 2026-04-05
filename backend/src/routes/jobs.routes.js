@@ -3,10 +3,7 @@
  * ──────────────────────────────────────────────────────────────────────────
  * POST /search-jobs/
  * Runs scrapers in parallel, deduplicates, scores against resume.
- * Replaces Python's /search-jobs/ endpoint in main.py.
- *
- * Mounted in server.js as:
- *   app.use('/', require('./routes/jobs.routes'));
+ * Updated for Render/cloud server compatibility.
  * ──────────────────────────────────────────────────────────────────────────
  */
 
@@ -24,7 +21,14 @@ const { scoreJobsAgainstResume } = require("../services/predictor.service");
 
 const router = express.Router();
 
-// ── Scraper registry (mirrors Python SCRAPER_REGISTRY) ───────────────────────
+// Longer timeout on production (Render is slower than localhost)
+const IS_PRODUCTION = process.env.NODE_ENV === "production" ||
+                      !!process.env.RENDER ||
+                      !!process.env.RAILWAY_ENVIRONMENT;
+
+const SCRAPER_TIMEOUT_MS = IS_PRODUCTION ? 150_000 : 90_000;
+
+// ── Scraper registry ──────────────────────────────────────────────────────────
 const SCRAPER_REGISTRY = {
   naukri:      collectNaukriJobs,
   indeed:      collectIndeedJobs,
@@ -55,28 +59,37 @@ router.post("/search-jobs/", async (req, res) => {
     top_skills       = [],
   } = req.body || {};
 
-  // ── Build search queries — role names only, no skill enrichment ─────────────
+  console.log(`[Jobs] Request — sources: ${sources} | exp: ${experience_level} | location: ${location}`);
+
+  // ── Build search queries ───────────────────────────────────────────────────
   const roleKeywords = roles.length
     ? [...roles]
     : keywords.filter((k) => [...ROLE_INDICATORS].some((r) => k.toLowerCase().includes(r)));
 
-  // Use role names directly as queries — no skill appending
   let finalQueries = roleKeywords.length
     ? roleKeywords.slice(0, 3)
     : ["data analyst"];
 
-  // Deduplicate + hard cap at 3
   finalQueries = [...new Map(finalQueries.map((q) => [q.toLowerCase(), q])).values()].slice(0, 3);
+
+  console.log(`[Jobs] Queries: ${finalQueries} | timeout: ${SCRAPER_TIMEOUT_MS}ms`);
 
   // ── Run scrapers in parallel ───────────────────────────────────────────────
   const validSources = sources.filter((s) => SCRAPER_REGISTRY[s]);
+
+  if (!validSources.length) {
+    return res.status(400).json({ detail: "No valid sources provided." });
+  }
 
   const results = await Promise.allSettled(
     validSources.map((src) =>
       Promise.race([
         SCRAPER_REGISTRY[src](finalQueries, experience_level, location),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Scraper timeout")), 90_000)
+          setTimeout(
+            () => reject(new Error(`Scraper timeout after ${SCRAPER_TIMEOUT_MS / 1000}s`)),
+            SCRAPER_TIMEOUT_MS
+          )
         ),
       ])
     )
@@ -85,9 +98,10 @@ router.post("/search-jobs/", async (req, res) => {
   const allJobs = [];
   results.forEach((result, i) => {
     if (result.status === "fulfilled") {
+      console.log(`[${validSources[i]}] ✓ ${result.value.length} jobs`);
       allJobs.push(...result.value);
     } else {
-      console.error(`[${validSources[i]}] Error: ${result.reason?.message}`);
+      console.error(`[${validSources[i]}] ✗ Error: ${result.reason?.message}`);
     }
   });
 
@@ -109,12 +123,14 @@ router.post("/search-jobs/", async (req, res) => {
     bySource[k] = (bySource[k] || 0) + 1;
   }
 
-  // ── Score against resume (predictor) ──────────────────────────────────────
+  // ── Score against resume ───────────────────────────────────────────────────
   const resumeSkills = weighted_skills.map((s) => s.skill);
   if (resumeSkills.length || roles.length) {
     scoreJobsAgainstResume(deduped, resumeSkills, roles, experience_level, weighted_skills);
-    console.log(`[Predictor] Scored ${deduped.length} jobs against resume`);
+    console.log(`[Predictor] Scored ${deduped.length} jobs`);
   }
+
+  console.log(`[Jobs] Returning ${deduped.length} jobs | by_source: ${JSON.stringify(bySource)}`);
 
   return res.json({
     jobs:          deduped,
