@@ -2,7 +2,8 @@
  * scrapers/apna.scraper.js
  * ──────────────────────────────────────────────────────────────────────────
  * Scrapes Apna.co job listings using Puppeteer.
- * Updated for Render/cloud server compatibility.
+ * Fixed: longer waits for JS-heavy rendering, better card selectors,
+ * login-wall detection improved.
  * ──────────────────────────────────────────────────────────────────────────
  */
 
@@ -16,11 +17,7 @@ const {
   getUserExpRange,
 } = require("../utils/expParser");
 
-const DEEP_VERIFY_LIMIT = IS_PRODUCTION ? 2 : 3;
-
-
 // ── Main export ───────────────────────────────────────────────────────────────
-
 async function collectApnaJobs(keywords, experienceLevel = "0-1", location = "") {
   const { min: userMin, max: userMax } = getUserExpRange(experienceLevel);
   const cleanKws = cleanKeywords_(keywords);
@@ -39,6 +36,12 @@ async function collectApnaJobs(keywords, experienceLevel = "0-1", location = "")
       console.log(`[Apna] URL: ${searchUrl}`);
 
       const keywordJobs = await withPage(browser, async (page) => {
+        // Apna checks for automation — mask webdriver
+        await page.evaluateOnNewDocument(() => {
+          Object.defineProperty(navigator, "webdriver", { get: () => false });
+          Object.defineProperty(navigator, "plugins", { get: () => [1, 2, 3] });
+        });
+
         try {
           await page.goto(searchUrl, {
             waitUntil: "domcontentloaded",
@@ -48,28 +51,63 @@ async function collectApnaJobs(keywords, experienceLevel = "0-1", location = "")
           console.log(`  [Apna] Navigation error: ${navErr.message} — trying anyway`);
         }
 
-        // Apna is very JS-heavy — needs longer wait
-        await sleep(IS_PRODUCTION ? 8000 : 6000, IS_PRODUCTION ? 12000 : 9000);
+        // Apna is very JS-heavy — wait longer + scroll
+        await sleep(IS_PRODUCTION ? 10000 : 6000, IS_PRODUCTION ? 14000 : 9000);
 
-        console.log(`  Page: ${await page.title().catch(() => "unknown")}`);
+        // Scroll to trigger content load
+        for (let i = 0; i < 3; i++) {
+          await page.evaluate(() => window.scrollBy(0, 400)).catch(() => {});
+          await sleep(600, 1000);
+        }
+
+        const title = await page.title().catch(() => "unknown");
+        console.log(`  Page: ${title}`);
 
         const bodyText = await page.evaluate(() =>
-          document.body?.textContent?.toLowerCase()?.slice(0, 500) || ""
+          (document.body?.textContent || "").toLowerCase().slice(0, 1000)
         ).catch(() => "");
 
-        if (/sign in|log in/.test(bodyText)) {
-          console.log("  [Apna] Login wall detected — skipping keyword");
+        // Login wall check
+        if (/sign in|log in|create account|verify your/.test(bodyText) && !/job|vacancy|opening/.test(bodyText)) {
+          console.log("  [Apna] Login wall detected — skipping");
           return [];
         }
 
-        // ── Extract cards ──────────────────────────────────────────────────
-        const cards = await page.$$(
-          "[class*='JobCard'], [class*='job-card'], [data-job-id], " +
-          "[class*='jobItem'], article, [class*='card']"
-        );
-        console.log(`  Cards: ${cards.length}`);
+        // ── Try multiple card selectors ────────────────────────────────────
+        let cards = [];
+
+        // Strategy 1: Apna's specific job card classes
+        cards = await page.$$("[class*='JobCard'], [class*='job-card'], [class*='jobCard']");
+        console.log(`  Strategy 1 (JobCard): ${cards.length}`);
+
+        if (cards.length < 2) {
+          // Strategy 2: data attributes
+          cards = await page.$$("[data-job-id], [data-jobid], [data-id]");
+          console.log(`  Strategy 2 (data-attr): ${cards.length}`);
+        }
+
+        if (cards.length < 2) {
+          // Strategy 3: list items / articles with job-like content
+          cards = await page.$$("li[class*='job'], li[class*='item'], article");
+          console.log(`  Strategy 3 (li/article): ${cards.length}`);
+        }
+
+        if (cards.length < 2) {
+          // Strategy 4: any card-like container
+          cards = await page.$$(
+            "[class*='card'][class*='job'], [class*='listing'], " +
+            "[class*='vacancy'], [class*='opening']"
+          );
+          console.log(`  Strategy 4 (listing): ${cards.length}`);
+        }
+
         if (!cards.length) {
-          console.log("  [Apna] No cards — JS may not have rendered or page blocked");
+          const domInfo = await page.evaluate(() => {
+            return `body children: ${document.body?.children?.length}, ` +
+                   `articles: ${document.querySelectorAll("article").length}, ` +
+                   `li: ${document.querySelectorAll("li").length}`;
+          }).catch(() => "unknown");
+          console.log(`  [Apna] No cards found. DOM: ${domInfo}`);
           return [];
         }
 
@@ -78,35 +116,69 @@ async function collectApnaJobs(keywords, experienceLevel = "0-1", location = "")
         for (const card of cards.slice(0, 12)) {
           try {
             const data = await card.evaluate((el) => {
+              // Title
               let title = "";
-              for (const sel of ["[class*='jobTitle']","[class*='title']","h2","h3","strong"]) {
+              for (const sel of [
+                "[class*='jobTitle']", "[class*='job-title']", "[class*='JobTitle']",
+                "[class*='title']", "h2", "h3", "h4", "strong",
+              ]) {
                 const t = el.querySelector(sel)?.textContent?.trim() || "";
-                if (t && t.length > 3) { title = t; break; }
+                if (t && t.length > 3 && t.length < 100) { title = t; break; }
               }
 
+              // Company
               let company = "";
-              for (const sel of ["[class*='company']","[class*='employer']","[class*='org']"]) {
+              for (const sel of [
+                "[class*='company']", "[class*='Company']", "[class*='employer']",
+                "[class*='org']", "[class*='brand']",
+              ]) {
                 const t = el.querySelector(sel)?.textContent?.trim() || "";
-                if (t) { company = t; break; }
+                if (t && t.length > 1) { company = t; break; }
               }
 
+              // Location
               let loc = "";
-              for (const sel of ["[class*='location']","[class*='city']","[class*='place']"]) {
+              for (const sel of [
+                "[class*='location']", "[class*='Location']", "[class*='city']",
+                "[class*='place']", "[class*='area']",
+              ]) {
                 const t = el.querySelector(sel)?.textContent?.trim() || "";
-                if (t) { loc = t; break; }
+                if (t && t.length > 1) { loc = t; break; }
               }
 
+              // Salary
               let salary = "";
-              for (const sel of ["[class*='salary']","[class*='ctc']","[class*='pay']"]) {
+              for (const sel of [
+                "[class*='salary']", "[class*='Salary']", "[class*='ctc']",
+                "[class*='pay']", "[class*='lpa']",
+              ]) {
                 const t = el.querySelector(sel)?.textContent?.trim() || "";
-                if (t) { salary = t; break; }
+                if (t && t.length > 1) { salary = t; break; }
               }
 
-              const a  = el.querySelector("a");
-              let link = a?.href || "";
-              if (link.startsWith("/")) link = `https://apna.co${link}`;
+              // Link
+              let link = "";
+              const anchors = el.querySelectorAll("a[href]");
+              for (const a of anchors) {
+                const href = a.href || "";
+                if (href.includes("apna.co") && href.length > 20) {
+                  link = href;
+                  break;
+                }
+              }
+              if (!link) {
+                const a = el.closest("a") || el.querySelector("a");
+                if (a?.href) {
+                  link = a.href.startsWith("/")
+                    ? `https://apna.co${a.href}`
+                    : a.href;
+                }
+              }
 
-              return { title, company, loc, salary, link, snippet: el.textContent.toLowerCase() };
+              return {
+                title, company, loc, salary, link,
+                snippet: el.textContent.toLowerCase().slice(0, 500),
+              };
             });
 
             if (!data.title || !data.link) continue;
@@ -142,15 +214,6 @@ async function collectApnaJobs(keywords, experienceLevel = "0-1", location = "")
           }
         }
 
-        // P2 — skip on production server
-        if (!IS_PRODUCTION) {
-          const unverified = found.filter((j) => !j.exp_verified).slice(0, DEEP_VERIFY_LIMIT);
-          if (unverified.length) {
-            console.log(`  [P2] Deep-verifying ${unverified.length} jobs...`);
-            await deepVerify(unverified, page, userMin, userMax);
-          }
-        }
-
         return found;
       });
 
@@ -163,38 +226,7 @@ async function collectApnaJobs(keywords, experienceLevel = "0-1", location = "")
   return jobs;
 }
 
-
-// ── Deep verify (P2) ──────────────────────────────────────────────────────────
-
-async function deepVerify(jobs, page, userMin, userMax) {
-  for (const job of jobs) {
-    try {
-      console.log(`    [P2] ${job.title.slice(0, 50)}`);
-      await page.goto(job.apply_link, { waitUntil: "domcontentloaded", timeout: 30_000 });
-      await sleep(3000, 5000);
-
-      const bodyText = await page.evaluate(() =>
-        document.body?.innerText?.toLowerCase() || ""
-      ).catch(() => "");
-
-      const expRange = extractYearsFromText(bodyText);
-      if (!expRange) continue;
-
-      job.exp_required  = formatExpRequired(expRange);
-      job.exp_verified  = true;
-      const { hardDrop, mismatch, hardMismatch } = checkExpMismatch(expRange, userMin, userMax);
-      job.exp_mismatch      = mismatch || hardDrop;
-      job.exp_hard_mismatch = hardMismatch || hardDrop;
-      console.log(`    [P2] ${hardDrop ? "MISMATCH" : "OK"}: ${job.exp_required}`);
-    } catch (e) {
-      console.log(`    [P2] Error: ${e.message}`);
-    }
-  }
-}
-
-
 // ── Keyword cleaner ───────────────────────────────────────────────────────────
-
 function cleanKeywords_(keywords) {
   const VALID = [
     "analyst","engineer","developer","scientist","manager","designer",
@@ -215,6 +247,5 @@ function cleanKeywords_(keywords) {
   }
   return out.length ? out : ["data analyst"];
 }
-
 
 module.exports = { collectApnaJobs };

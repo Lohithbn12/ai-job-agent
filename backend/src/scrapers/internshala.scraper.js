@@ -2,7 +2,7 @@
  * scrapers/internshala.scraper.js
  * ──────────────────────────────────────────────────────────────────────────
  * Scrapes Internshala job listings using Puppeteer.
- * Updated for Render/cloud server compatibility.
+ * Fixed: better link extraction, improved card selectors, scroll-to-load.
  * ──────────────────────────────────────────────────────────────────────────
  */
 
@@ -16,11 +16,7 @@ const {
   getUserExpRange,
 } = require("../utils/expParser");
 
-const DEEP_VERIFY_LIMIT = IS_PRODUCTION ? 2 : 3;
-
-
 // ── Main export ───────────────────────────────────────────────────────────────
-
 async function collectInternshalaJobs(keywords, experienceLevel = "0-1", location = "") {
   const { min: userMin, max: userMax } = getUserExpRange(experienceLevel);
   const cleanKws = cleanKeywords_(keywords);
@@ -50,14 +46,33 @@ async function collectInternshalaJobs(keywords, experienceLevel = "0-1", locatio
           console.log(`  [Internshala] Navigation error: ${navErr.message} — trying anyway`);
         }
 
-        await sleep(IS_PRODUCTION ? 4000 : 2000, IS_PRODUCTION ? 6000 : 3000);
+        await sleep(IS_PRODUCTION ? 5000 : 2500, IS_PRODUCTION ? 7000 : 4000);
+
+        // Scroll to trigger lazy loading
+        await page.evaluate(() => window.scrollTo(0, 500)).catch(() => {});
+        await sleep(800, 1200);
+        await page.evaluate(() => window.scrollTo(0, 1000)).catch(() => {});
+        await sleep(500, 800);
+
+        console.log(`  Page: ${await page.title().catch(() => "unknown")}`);
 
         // ── Extract cards ──────────────────────────────────────────────────
-        const cards = await page.$$(
+        let cards = await page.$$(
           ".internship_meta, .job-internship-card, [data-internship_id], " +
           ".individual_internship, .container-fluid.individual_internship"
         );
-        console.log(`  Cards: ${cards.length}`);
+        console.log(`  Cards (attempt 1): ${cards.length}`);
+
+        if (cards.length < 2) {
+          cards = await page.$$(".individual_internship, #internship_list_container > div, .internship-list-container > div");
+          console.log(`  Cards (attempt 2): ${cards.length}`);
+        }
+
+        if (cards.length < 2) {
+          cards = await page.$$("[class*='internship'], [class*='job'][class*='card'], article");
+          console.log(`  Cards (attempt 3): ${cards.length}`);
+        }
+
         if (!cards.length) return [];
 
         const found = [];
@@ -67,27 +82,69 @@ async function collectInternshalaJobs(keywords, experienceLevel = "0-1", locatio
             const data = await card.evaluate((el) => {
               const text = (sel) => el.querySelector(sel)?.textContent?.trim() || "";
 
-              const title   = text(".job-title-href, .profile, h3.job-title, a.job-title, [class*='title']");
-              const company = text(".company-name, .company_name, [class*='company']");
-              const loc     = text(".location_link, .location, [class*='location']");
-              const salary  = text(".stipend, .salary, [class*='salary'], [class*='stipend']");
+              // Title
+              let title = "";
+              for (const sel of [
+                ".job-title-href", ".profile", "h3.job-title",
+                "a.job-title", ".heading_4_5", "[class*='title']", "h3", "h4",
+              ]) {
+                title = text(sel);
+                if (title) break;
+              }
 
-              const linkSelectors = [
-                "a.job-title-href",
-                "a[href*='/jobs/detail']",
-                "a[href*='internshala.com']",
-              ];
+              // Company
+              let company = "";
+              for (const sel of [
+                ".company-name", ".company_name", "[class*='company']",
+                ".heading_6", "p.name",
+              ]) {
+                company = text(sel);
+                if (company) break;
+              }
+
+              // Location
+              let loc = "";
+              for (const sel of [
+                ".location_link", ".location", "[class*='location']",
+                ".map-icon", ".ic-16-map-pin",
+              ]) {
+                loc = text(sel);
+                if (loc) break;
+              }
+
+              // Salary / Stipend
+              const salary = text(".stipend, .salary, [class*='salary'], [class*='stipend'], .ic-16-money");
+
+              // Link — prefer direct job detail links
               let link = "";
-              for (const sel of linkSelectors) {
-                const href = el.querySelector(sel)?.href || "";
-                if (href.includes("internshala.com")) { link = href; break; }
+              const allAnchors = el.querySelectorAll("a[href]");
+              for (const a of allAnchors) {
+                const href = a.href || "";
+                if (href.includes("internshala.com") &&
+                   (href.includes("/jobs/detail") || href.includes("/job/") || href.includes("/internship/"))) {
+                  link = href.split("?")[0];
+                  break;
+                }
               }
+              // Fallback: any internshala link
               if (!link) {
-                const a = el.querySelector("a");
-                if (a?.href?.includes("internshala.com")) link = a.href;
+                for (const a of allAnchors) {
+                  if (a.href?.includes("internshala.com")) {
+                    link = a.href.split("?")[0];
+                    break;
+                  }
+                }
+              }
+              // Relative URL fallback
+              if (!link) {
+                const a = el.querySelector("a[href^='/']");
+                if (a) link = `https://internshala.com${a.getAttribute("href").split("?")[0]}`;
               }
 
-              return { title, company, loc, salary, link, snippet: el.textContent.toLowerCase() };
+              return {
+                title, company, loc, salary, link,
+                snippet: el.textContent.toLowerCase().slice(0, 500),
+              };
             });
 
             if (!data.title || !data.link) continue;
@@ -123,15 +180,6 @@ async function collectInternshalaJobs(keywords, experienceLevel = "0-1", locatio
           }
         }
 
-        // P2 — skip on production server
-        if (!IS_PRODUCTION) {
-          const unverified = found.filter((j) => !j.exp_verified).slice(0, DEEP_VERIFY_LIMIT);
-          if (unverified.length) {
-            console.log(`  [P2] Deep-verifying ${unverified.length} jobs...`);
-            await deepVerify(unverified, page, userMin, userMax);
-          }
-        }
-
         return found;
       });
 
@@ -144,38 +192,7 @@ async function collectInternshalaJobs(keywords, experienceLevel = "0-1", locatio
   return jobs;
 }
 
-
-// ── Deep verify (P2) ──────────────────────────────────────────────────────────
-
-async function deepVerify(jobs, page, userMin, userMax) {
-  for (const job of jobs) {
-    try {
-      console.log(`    [P2] ${job.title.slice(0, 50)}`);
-      await page.goto(job.apply_link, { waitUntil: "domcontentloaded", timeout: 30_000 });
-      await sleep(1500, 2500);
-
-      const bodyText = await page.evaluate(() =>
-        document.body?.innerText?.toLowerCase() || ""
-      ).catch(() => "");
-
-      const expRange = extractYearsFromText(bodyText);
-      if (!expRange) continue;
-
-      job.exp_required  = formatExpRequired(expRange);
-      job.exp_verified  = true;
-      const { hardDrop, mismatch, hardMismatch } = checkExpMismatch(expRange, userMin, userMax);
-      job.exp_mismatch      = mismatch || hardDrop;
-      job.exp_hard_mismatch = hardMismatch || hardDrop;
-      console.log(`    [P2] ${hardDrop ? "MISMATCH" : "OK"}: ${job.exp_required}`);
-    } catch (e) {
-      console.log(`    [P2] Error: ${e.message}`);
-    }
-  }
-}
-
-
 // ── Keyword cleaner ───────────────────────────────────────────────────────────
-
 function cleanKeywords_(keywords) {
   const VALID = [
     "analyst","engineer","developer","scientist","manager","designer",
@@ -196,6 +213,5 @@ function cleanKeywords_(keywords) {
   }
   return out.length ? out : ["data analyst"];
 }
-
 
 module.exports = { collectInternshalaJobs };

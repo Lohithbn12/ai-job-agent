@@ -1,22 +1,21 @@
 /**
  * scrapers/indeed.scraper.js
  * ──────────────────────────────────────────────────────────────────────────
- * Scrapes Indeed job listings using Puppeteer.
- * Updated for Render/cloud server compatibility.
+ * Fetches Indeed job listings via their public search — no puppeteer.
+ * Uses the RSS/JSON endpoint to avoid Render IP blocks.
  * ──────────────────────────────────────────────────────────────────────────
  */
 
 "use strict";
 
-const { withBrowser, withPage, sleep, IS_PRODUCTION } = require("../services/chromeHelper");
+const https = require("https");
+const http  = require("http");
 const {
   extractYearsFromText,
   formatExpRequired,
   checkExpMismatch,
   getUserExpRange,
 } = require("../utils/expParser");
-
-const DEEP_VERIFY_LIMIT = IS_PRODUCTION ? 2 : 3;
 
 const EXPERIENCE_FILTERS = {
   "0-1":  "entry_level",
@@ -33,15 +32,59 @@ const COUNTRY_DOMAINS = {
   canada:                 "ca.indeed.com",
   australia:              "au.indeed.com",
   germany:                "de.indeed.com",
-  france:                 "fr.indeed.com",
   singapore:              "sg.indeed.com",
   uae:                    "ae.indeed.com",
   "united arab emirates": "ae.indeed.com",
 };
 
+// ── HTTP GET with redirect following ─────────────────────────────────────────
+function fetchUrl(url, headers = {}, redirects = 3) {
+  return new Promise((resolve, reject) => {
+    const lib = url.startsWith("https") ? https : http;
+    const req = lib.get(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+          "AppleWebKit/537.36 (KHTML, like Gecko) " +
+          "Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate",
+        ...headers,
+      },
+      timeout: 20000,
+    }, (res) => {
+      // Follow redirects
+      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && redirects > 0) {
+        const next = res.headers.location.startsWith("http")
+          ? res.headers.location
+          : new URL(res.headers.location, url).href;
+        resolve(fetchUrl(next, headers, redirects - 1));
+        return;
+      }
+
+      // Handle gzip
+      let stream = res;
+      if (res.headers["content-encoding"] === "gzip") {
+        const zlib = require("zlib");
+        stream = res.pipe(zlib.createGunzip());
+      }
+
+      let data = "";
+      stream.on("data", (c) => (data += c));
+      stream.on("end", () => resolve({ status: res.statusCode, body: data }));
+      stream.on("error", reject);
+    });
+    req.on("error", reject);
+    req.on("timeout", () => { req.destroy(); reject(new Error("Request timeout")); });
+  });
+}
+
+function stripHtml(str = "") {
+  return str.replace(/<[^>]*>/g, " ").replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+}
 
 // ── Main export ───────────────────────────────────────────────────────────────
-
 async function collectIndeedJobs(keywords, experienceLevel = "0-1", location = "") {
   const { min: userMin, max: userMax } = getUserExpRange(experienceLevel);
   const expFilter = EXPERIENCE_FILTERS[experienceLevel] || "entry_level";
@@ -58,174 +101,135 @@ async function collectIndeedJobs(keywords, experienceLevel = "0-1", location = "
 
   const jobs = [];
 
-  await withBrowser(async (browser) => {
-    for (const keyword of cleanKws) {
-      const searchUrl =
-        `https://${baseDomain}/jobs` +
+  for (const keyword of cleanKws) {
+    try {
+      // Use Indeed's RSS feed — much less likely to be blocked than the main page
+      const rssUrl =
+        `https://${baseDomain}/rss` +
         `?q=${encodeURIComponent(keyword)}` +
-        `&explvl=${expFilter}&sort=date` +
+        `&explvl=${expFilter}` +
+        `&sort=date` +
         (locParam ? `&l=${locParam}` : "");
 
-      console.log(`[Indeed] URL: ${searchUrl}`);
+      console.log(`[Indeed] RSS: ${rssUrl}`);
 
-      const keywordJobs = await withPage(browser, async (page) => {
-        try {
-          await page.goto(searchUrl, {
-            waitUntil: "domcontentloaded",
-            timeout: IS_PRODUCTION ? 60_000 : 30_000,
-          });
-        } catch (navErr) {
-          console.log(`  [Indeed] Navigation error: ${navErr.message} — trying anyway`);
-        }
-
-        await sleep(IS_PRODUCTION ? 4000 : 2000, IS_PRODUCTION ? 6000 : 3000);
-
-        const title = await page.title().catch(() => "");
-        console.log(`  Page: ${title}`);
-
-        if (/blocked|just a moment/i.test(title)) {
-          await sleep(IS_PRODUCTION ? 15000 : 10000);
-          await page.reload({ waitUntil: "domcontentloaded" }).catch(() => {});
-          await sleep(IS_PRODUCTION ? 8000 : 5000);
-          const newTitle = await page.title().catch(() => "");
-          if (/blocked|just a moment/i.test(newTitle)) {
-            console.log("  Blocked — skipping keyword");
-            return [];
-          }
-        }
-
-        // ── Extract cards ──────────────────────────────────────────────────
-        const cards = await page.$$(".job_seen_beacon, [data-jk]");
-        console.log(`  Cards: ${cards.length}`);
-        if (!cards.length) return [];
-
-        const found = [];
-
-        for (const card of cards.slice(0, 10)) {
-          try {
-            const data = await card.evaluate((el, domain) => {
-              const text = (sel) => el.querySelector(sel)?.textContent?.trim() || "";
-
-              const titleEl = el.querySelector("h2.jobTitle span[title], h2.jobTitle span, a.jcs-JobTitle span");
-              const title   = titleEl?.getAttribute("title") || titleEl?.textContent?.trim() || "";
-
-              const company = text("[data-testid='company-name'], .companyName");
-              const loc     = text("[data-testid='text-location'], .companyLocation");
-
-              let salary = "";
-              const salEls = el.querySelectorAll(
-                "[data-testid='attribute_snippet_testid'], .salary-snippet-container, " +
-                ".salaryOnly, [class*='SalarySnippet'], [class*='salary']"
-              );
-              for (const s of salEls) {
-                const t = s.textContent.trim();
-                if (t && /[$₹£€]|year|hour|month|per/i.test(t)) { salary = t; break; }
-              }
-              if (!salary) {
-                for (const m of el.querySelectorAll(".metadata, li")) {
-                  const t = m.textContent.trim();
-                  if (t && /[$₹£LPA]|lakh|k per/i.test(t)) { salary = t; break; }
-                }
-              }
-
-              const aEl = el.querySelector("a.jcs-JobTitle, h2.jobTitle a");
-              const jk  = aEl?.getAttribute("data-jk") || "";
-              const link = jk
-                ? `https://${domain}/viewjob?jk=${jk}`
-                : (aEl?.href || "").split("?")[0];
-
-              const snippet   = el.textContent.toLowerCase();
-              const easyApply = snippet.includes("easily apply");
-
-              return { title, company, loc, salary, link, snippet, easyApply };
-            }, baseDomain);
-
-            if (!data.title || !data.link) continue;
-
-            const expRange    = extractYearsFromText(data.snippet);
-            const expReq      = formatExpRequired(expRange);
-            const expVerified = expRange !== null;
-            const { hardDrop, mismatch, hardMismatch } = checkExpMismatch(expRange, userMin, userMax);
-
-            if (hardDrop) {
-              console.log(`  [P1] Hard-drop '${data.title}': ${expReq}`);
-              continue;
-            }
-
-            console.log(`  ${expVerified ? "✅[P1]" : "🔍[P2]"} ${data.title} @ ${data.company} | req: ${expReq || "unknown"}`);
-
-            found.push({
-              title:             data.title,
-              company:           data.company,
-              location:          data.loc,
-              salary:            data.salary,
-              experience_level:  experienceLevel,
-              exp_required:      expReq,
-              exp_mismatch:      mismatch,
-              exp_hard_mismatch: hardMismatch,
-              exp_verified:      expVerified,
-              apply_link:        data.link,
-              easy_apply:        data.easyApply,
-              source:            "Indeed",
-            });
-          } catch (e) {
-            console.log(`  Card error: ${e.message}`);
-          }
-        }
-
-        // P2 — skip on production server
-        if (!IS_PRODUCTION) {
-          const unverified = found.filter((j) => !j.exp_verified).slice(0, DEEP_VERIFY_LIMIT);
-          if (unverified.length) {
-            console.log(`  [P2] Deep-verifying ${unverified.length} jobs...`);
-            await deepVerify(unverified, page, userMin, userMax);
-          }
-        }
-
-        return found;
+      const { status, body } = await fetchUrl(rssUrl, {
+        "Referer": `https://${baseDomain}/`,
       });
 
-      jobs.push(...keywordJobs);
-      await sleep(1000, 2000);
+      if (status !== 200 || !body.includes("<item>")) {
+        console.log(`[indeed] RSS returned ${status} or no items — trying HTML fallback`);
+
+        // HTML fallback
+        const htmlUrl =
+          `https://${baseDomain}/jobs` +
+          `?q=${encodeURIComponent(keyword)}` +
+          `&explvl=${expFilter}&sort=date` +
+          (locParam ? `&l=${locParam}` : "");
+
+        const fallback = await fetchUrl(htmlUrl).catch(() => ({ status: 0, body: "" }));
+        if (!fallback.body || fallback.status !== 200) {
+          console.log(`[indeed] ✗ HTML fallback also failed`);
+          continue;
+        }
+
+        // Parse HTML job cards
+        const htmlJobs = parseIndeedHTML(fallback.body, baseDomain, userMin, userMax, experienceLevel);
+        jobs.push(...htmlJobs);
+        console.log(`[Indeed] HTML fallback: ${htmlJobs.length} jobs`);
+        continue;
+      }
+
+      // Parse RSS
+      const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+      let match;
+      const found = [];
+
+      while ((match = itemRegex.exec(body)) !== null && found.length < 10) {
+        const item = match[1];
+
+        const title   = stripHtml(item.match(/<title>([\s\S]*?)<\/title>/)?.[1] || "");
+        const company = stripHtml(item.match(/<source[^>]*>([\s\S]*?)<\/source>/)?.[1] || "");
+        const link    = (item.match(/<link>([\s\S]*?)<\/link>/) || item.match(/<guid[^>]*>([\s\S]*?)<\/guid>/))?.[1]?.trim() || "";
+        const desc    = stripHtml(item.match(/<description>([\s\S]*?)<\/description>/)?.[1] || "").toLowerCase();
+        const locRaw  = stripHtml(item.match(/<[^>]*location[^>]*>([\s\S]*?)<\/[^>]+>/i)?.[1] || location);
+
+        if (!title || !link) continue;
+
+        const expRange    = extractYearsFromText(desc);
+        const expReq      = formatExpRequired(expRange);
+        const expVerified = expRange !== null;
+        const { hardDrop, mismatch, hardMismatch } = checkExpMismatch(expRange, userMin, userMax);
+
+        if (hardDrop) {
+          console.log(`  [P1] Hard-drop '${title}': ${expReq}`);
+          continue;
+        }
+
+        console.log(`  ${expVerified ? "✅[P1]" : "🔍[P2]"} ${title} @ ${company} | req: ${expReq || "unknown"}`);
+
+        found.push({
+          title,
+          company,
+          location:          locRaw || location,
+          salary:            "",
+          experience_level:  experienceLevel,
+          exp_required:      expReq,
+          exp_mismatch:      mismatch,
+          exp_hard_mismatch: hardMismatch,
+          exp_verified:      expVerified,
+          apply_link:        link,
+          easy_apply:        false,
+          source:            "Indeed",
+        });
+      }
+
+      console.log(`[Indeed] ${found.length} jobs from RSS`);
+      jobs.push(...found);
+
+    } catch (err) {
+      console.log(`[indeed] ✗ Error: ${err.message}`);
     }
-  });
+
+    await new Promise((r) => setTimeout(r, 1000 + Math.random() * 1000));
+  }
 
   console.log(`[Indeed] Total: ${jobs.length} jobs`);
   return jobs;
 }
 
+// ── HTML parser fallback ──────────────────────────────────────────────────────
+function parseIndeedHTML(html, domain, userMin, userMax, experienceLevel) {
+  const found = [];
+  const cardRegex = /data-jk="([^"]+)"[\s\S]*?<h2[^>]*jobTitle[^>]*>([\s\S]*?)<\/h2>[\s\S]*?class="[^"]*companyName[^"]*"[^>]*>([\s\S]*?)<\/(?:span|a)>/g;
+  let match;
+  while ((match = cardRegex.exec(html)) !== null && found.length < 10) {
+    const jk      = match[1];
+    const title   = stripHtml(match[2]);
+    const company = stripHtml(match[3]);
+    const link    = `https://${domain}/viewjob?jk=${jk}`;
 
-// ── Deep verify (P2) ──────────────────────────────────────────────────────────
+    if (!title) continue;
 
-async function deepVerify(jobs, page, userMin, userMax) {
-  for (const job of jobs) {
-    try {
-      console.log(`    [P2] ${job.title.slice(0, 50)}`);
-      await page.goto(job.apply_link, { waitUntil: "domcontentloaded", timeout: 30_000 });
-      await sleep(1500, 2500);
-
-      const bodyText = await page.evaluate(() =>
-        document.body?.innerText?.toLowerCase() || ""
-      ).catch(() => "");
-
-      const expRange = extractYearsFromText(bodyText);
-      if (!expRange) { console.log(`    [P2] No exp info — leaving neutral`); continue; }
-
-      job.exp_required  = formatExpRequired(expRange);
-      job.exp_verified  = true;
-      const { hardDrop, mismatch, hardMismatch } = checkExpMismatch(expRange, userMin, userMax);
-      job.exp_mismatch      = mismatch || hardDrop;
-      job.exp_hard_mismatch = hardMismatch || hardDrop;
-      console.log(`    [P2] ${hardDrop ? "MISMATCH" : "OK"}: ${job.exp_required}`);
-    } catch (e) {
-      console.log(`    [P2] Error: ${e.message}`);
-    }
+    found.push({
+      title,
+      company,
+      location:          "",
+      salary:            "",
+      experience_level:  experienceLevel,
+      exp_required:      null,
+      exp_mismatch:      false,
+      exp_hard_mismatch: false,
+      exp_verified:      false,
+      apply_link:        link,
+      easy_apply:        false,
+      source:            "Indeed",
+    });
   }
+  return found;
 }
 
-
 // ── Keyword cleaner ───────────────────────────────────────────────────────────
-
 function cleanKeywords_(keywords) {
   const VALID = [
     "analyst","engineer","developer","scientist","manager","designer",
@@ -248,6 +252,5 @@ function cleanKeywords_(keywords) {
   }
   return out.length ? out : ["data analyst"];
 }
-
 
 module.exports = { collectIndeedJobs };

@@ -2,7 +2,7 @@
  * scrapers/naukri.scraper.js
  * ──────────────────────────────────────────────────────────────────────────
  * Scrapes Naukri.com job listings using Puppeteer.
- * Updated for Render/cloud server compatibility.
+ * Fixed for Render: better selectors, longer waits, scroll-to-load.
  * ──────────────────────────────────────────────────────────────────────────
  */
 
@@ -16,11 +16,7 @@ const {
   getUserExpRange,
 } = require("../utils/expParser");
 
-const DEEP_VERIFY_LIMIT = IS_PRODUCTION ? 2 : 3; // fewer on server to save time
-
-
 // ── Main export ───────────────────────────────────────────────────────────────
-
 async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "") {
   const { min: userMin, max: userMax } = getUserExpRange(experienceLevel);
   const cleanKws = cleanKeywords_(keywords);
@@ -41,89 +37,170 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
       console.log(`[Naukri] URL: ${searchUrl}`);
 
       const keywordJobs = await withPage(browser, async (page) => {
-        const referers = [
-          "https://www.google.com/",
-          "https://www.bing.com/",
-          "https://search.yahoo.com/",
-        ];
+        // Anti-bot headers
         await page.setExtraHTTPHeaders({
-          referer: referers[Math.floor(Math.random() * referers.length)],
+          "Referer": "https://www.google.com/",
           "Sec-CH-UA": '"Chromium";v="124", "Google Chrome";v="124", "Not:A-Brand";v="99"',
           "Sec-CH-UA-Mobile": "?0",
           "Sec-CH-UA-Platform": '"Windows"',
-          "Upgrade-Insecure-Requests": "1",
+        });
+
+        // Mask webdriver
+        await page.evaluateOnNewDocument(() => {
+          Object.defineProperty(navigator, "webdriver", { get: () => false });
         });
 
         try {
           await page.goto(searchUrl, {
-            waitUntil: IS_PRODUCTION ? "domcontentloaded" : "networkidle2",
+            waitUntil: "domcontentloaded",
             timeout: IS_PRODUCTION ? 60_000 : 45_000,
           });
         } catch (navErr) {
-          console.log(`  [Naukri] Navigation error: ${navErr.message} — trying anyway`);
+          console.log(`  [Naukri] Nav error: ${navErr.message} — trying anyway`);
         }
 
-        // Wait for cards to appear — longer on server
-        await page.waitForSelector(
-          "[data-job-id], div[class*='job'], article[class*='jobCard']",
-          { timeout: IS_PRODUCTION ? 20_000 : 15_000 }
-        ).catch(() => {});
+        // Wait for initial render then scroll to trigger lazy-load
+        await sleep(IS_PRODUCTION ? 6000 : 3000, IS_PRODUCTION ? 9000 : 5000);
 
-        await sleep(IS_PRODUCTION ? 5000 : 4000, IS_PRODUCTION ? 8000 : 6000);
-
-        // Check for blocks
-        const bodyText = await page.evaluate(() =>
-          document.body?.innerText?.toLowerCase() || ""
-        ).catch(() => "");
-
-        if (/access denied|you don't have permission|forbidden/.test(bodyText)) {
-          console.log("  [Naukri] Blocked — skipping keyword");
-          return [];
-        }
+        // Scroll down to trigger lazy loading of job cards
+        await page.evaluate(() => {
+          window.scrollTo(0, 400);
+        }).catch(() => {});
+        await sleep(1500, 2500);
+        await page.evaluate(() => {
+          window.scrollTo(0, 800);
+        }).catch(() => {});
+        await sleep(1000, 1500);
 
         const pageTitle = await page.title().catch(() => "");
         console.log(`  Page: ${pageTitle}`);
 
-        // ── Extract cards ──────────────────────────────────────────────────
-        let cards = await page.$$(
-          "article[class*='jobCard'], " +
-          "div[class*='jobCard'], " +
-          "div[class*='job'], " +
-          "div.jobTuple, " +
-          ".srp-jobtuple-wrapper, " +
-          "article.jobTuple, " +
-          "[data-job-id], " +
-          "li[class*='job']"
-        );
-        console.log(`  Cards (attempt 1): ${cards.length}`);
+        // Check for blocks
+        const bodyText = await page.evaluate(() =>
+          (document.body?.innerText || "").toLowerCase()
+        ).catch(() => "");
 
-        if (!cards.length) {
-          cards = await page.$$("article, [class*='srp'], div.jobTuple");
-          console.log(`  Cards (attempt 2): ${cards.length}`);
+        if (/access denied|you don't have permission|forbidden|captcha/.test(bodyText)) {
+          console.log("  [Naukri] Blocked — skipping");
+          return [];
         }
 
-        if (!cards.length) return [];
+        // ── Try multiple selector strategies ──────────────────────────────
+        // Naukri uses dynamic class names — we use multiple fallback selectors
+        let cards = [];
+
+        // Strategy 1: article tags with job-related classes (most reliable)
+        cards = await page.$$("article.jobTuple, article[class*='job']");
+        console.log(`  Strategy 1 (article): ${cards.length}`);
+
+        // Strategy 2: data-job-id attribute
+        if (cards.length < 3) {
+          cards = await page.$$("[data-job-id]");
+          console.log(`  Strategy 2 (data-job-id): ${cards.length}`);
+        }
+
+        // Strategy 3: srp job wrapper divs
+        if (cards.length < 3) {
+          cards = await page.$$(".srp-jobtuple-wrapper, .jobTuple, .job-tuple");
+          console.log(`  Strategy 3 (srp-wrapper): ${cards.length}`);
+        }
+
+        // Strategy 4: broad — any div/article that looks like a job card
+        if (cards.length < 3) {
+          cards = await page.$$(
+            "div[class*='jobCard'], div[class*='JobCard'], " +
+            "div[class*='job-card'], div[class*='srp']"
+          );
+          console.log(`  Strategy 4 (class contains): ${cards.length}`);
+        }
+
+        // Strategy 5: last resort — any list item or article in main content
+        if (cards.length < 3) {
+          cards = await page.$$("main article, main li[class*='job'], .list article");
+          console.log(`  Strategy 5 (main article): ${cards.length}`);
+        }
+
+        if (!cards.length) {
+          // Debug: log what's actually on the page
+          const domSummary = await page.evaluate(() => {
+            const els = document.querySelectorAll("article, [data-job-id], [class*='job']");
+            return `articles: ${document.querySelectorAll("article").length}, ` +
+                   `data-job-id: ${document.querySelectorAll("[data-job-id]").length}, ` +
+                   `job-class: ${document.querySelectorAll("[class*='job']").length}`;
+          }).catch(() => "unknown");
+          console.log(`  DOM: ${domSummary}`);
+          return [];
+        }
 
         const found = [];
 
-        for (const card of cards.slice(0, 10)) {
+        for (const card of cards.slice(0, 12)) {
           try {
             const data = await card.evaluate((el) => {
               const text = (sel) => el.querySelector(sel)?.textContent?.trim() || "";
 
-              const titleEl = el.querySelector("a.title, .title a, a.jobTitle, [class*='title'] a, a[title]");
-              const title   = titleEl?.getAttribute("title") || titleEl?.textContent?.trim() || "";
+              // Title — try multiple selectors
+              let title = "";
+              for (const sel of [
+                "a.title", ".title a", "a.jobTitle", ".jobTitle a",
+                "[class*='title'] a", "a[title]", "h2 a", "h3 a", "a[class*='job']",
+              ]) {
+                const el2 = el.querySelector(sel);
+                if (el2) {
+                  title = el2.getAttribute("title") || el2.textContent.trim();
+                  if (title) break;
+                }
+              }
 
-              const company = text("a.comp-name, .comp-name, [class*='company'], .companyInfo a");
-              const loc     = text(".locWdth, [class*='location'], .location, li.location span");
-              const salRaw  = text(".sal, [class*='salary'], .salary, li.salary span");
-              const salary  = /not disclosed/i.test(salRaw) ? "" : salRaw;
-              const expText = text(".expwdth, [class*='experience'], li.experience, li.exp span, [class*='exp']");
+              // Company
+              let company = "";
+              for (const sel of [
+                "a.comp-name", ".comp-name", ".companyInfo a",
+                "[class*='company']", "[class*='compName']",
+              ]) {
+                company = text(sel);
+                if (company) break;
+              }
 
-              const linkEl = el.querySelector("a.title, a.jobTitle, [class*='title'] a, a[href*='naukri.com']");
-              const link   = linkEl?.href || "";
+              // Location
+              let loc = "";
+              for (const sel of [
+                ".locWdth", "[class*='location']", ".location",
+                "li.location span", "[class*='loc']",
+              ]) {
+                loc = text(sel);
+                if (loc) break;
+              }
 
-              return { title, company, loc, salary, expText, link, snippet: el.textContent.toLowerCase() };
+              // Salary
+              let salary = "";
+              const salRaw = text(".sal, [class*='salary'], li.salary span");
+              salary = /not disclosed/i.test(salRaw) ? "" : salRaw;
+
+              // Experience text
+              let expText = "";
+              for (const sel of [
+                ".expwdth", "[class*='experience']", "li.experience",
+                "li.exp span", "[class*='exp']",
+              ]) {
+                expText = text(sel);
+                if (expText) break;
+              }
+
+              // Link
+              let link = "";
+              for (const sel of [
+                "a.title", "a.jobTitle", "[class*='title'] a",
+                "a[href*='naukri.com/']",
+              ]) {
+                const a = el.querySelector(sel);
+                if (a?.href) { link = a.href; break; }
+              }
+
+              return {
+                title, company, loc, salary, expText, link,
+                snippet: el.textContent.toLowerCase().slice(0, 500),
+              };
             });
 
             if (!data.title || !data.link) continue;
@@ -159,20 +236,11 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
           }
         }
 
-        // ── P2: deep verify (skip on server to save time) ─────────────────
-        if (!IS_PRODUCTION) {
-          const unverified = found.filter((j) => !j.exp_verified).slice(0, DEEP_VERIFY_LIMIT);
-          if (unverified.length) {
-            console.log(`  [P2] Deep-verifying ${unverified.length} jobs...`);
-            await deepVerify(unverified, page, userMin, userMax);
-          }
-        }
-
         return found;
       }, { skipAntiBot: true });
 
       jobs.push(...keywordJobs);
-      await sleep(1000, 2000);
+      await sleep(1500, 2500);
     }
   });
 
@@ -180,38 +248,7 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
   return jobs;
 }
 
-
-// ── Deep verify (P2) ──────────────────────────────────────────────────────────
-
-async function deepVerify(jobs, page, userMin, userMax) {
-  for (const job of jobs) {
-    try {
-      console.log(`    [P2] ${job.title.slice(0, 50)}`);
-      await page.goto(job.apply_link, { waitUntil: "domcontentloaded", timeout: 30_000 });
-      await sleep(1500, 2500);
-
-      const bodyText = await page.evaluate(() =>
-        document.body?.innerText?.toLowerCase() || ""
-      ).catch(() => "");
-
-      const expRange = extractYearsFromText(bodyText);
-      if (!expRange) continue;
-
-      job.exp_required  = formatExpRequired(expRange);
-      job.exp_verified  = true;
-      const { hardDrop, mismatch, hardMismatch } = checkExpMismatch(expRange, userMin, userMax);
-      job.exp_mismatch      = mismatch || hardDrop;
-      job.exp_hard_mismatch = hardMismatch || hardDrop;
-      console.log(`    [P2] ${hardDrop ? "MISMATCH" : "OK"}: ${job.exp_required}`);
-    } catch (e) {
-      console.log(`    [P2] Error: ${e.message}`);
-    }
-  }
-}
-
-
 // ── Keyword cleaner ───────────────────────────────────────────────────────────
-
 function cleanKeywords_(keywords) {
   const VALID = [
     "analyst","engineer","developer","scientist","manager","designer",
@@ -232,6 +269,5 @@ function cleanKeywords_(keywords) {
   }
   return out.length ? out : ["data analyst"];
 }
-
 
 module.exports = { collectNaukriJobs };

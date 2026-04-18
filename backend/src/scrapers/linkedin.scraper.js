@@ -1,15 +1,14 @@
 /**
  * scrapers/linkedin.scraper.js
  * ──────────────────────────────────────────────────────────────────────────
- * Scrapes LinkedIn public job listings using Puppeteer.
- * No login required for public search results.
- * Updated for Render/cloud server compatibility.
+ * Fetches LinkedIn public job listings via their guest JSON API.
+ * No puppeteer needed — avoids Render IP blocks and 120s timeouts.
  * ──────────────────────────────────────────────────────────────────────────
  */
 
 "use strict";
 
-const { withBrowser, withPage, sleep, IS_PRODUCTION } = require("../services/chromeHelper");
+const https = require("https");
 const {
   extractYearsFromText,
   formatExpRequired,
@@ -25,9 +24,34 @@ const EXP_CODE_MAP = {
   "10+":  "5,6",
 };
 
+// ── Simple HTTPS GET helper ───────────────────────────────────────────────────
+function httpsGet(url, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+          "AppleWebKit/537.36 (KHTML, like Gecko) " +
+          "Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        ...headers,
+      },
+    };
+    https.get(url, options, (res) => {
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => resolve({ status: res.statusCode, body: data }));
+    }).on("error", reject);
+  });
+}
+
+// ── Strip HTML tags ───────────────────────────────────────────────────────────
+function stripHtml(str = "") {
+  return str.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
 
 // ── Main export ───────────────────────────────────────────────────────────────
-
 async function collectLinkedinJobs(keywords, experienceLevel = "0-1", location = "") {
   const { min: userMin, max: userMax } = getUserExpRange(experienceLevel);
   const expCodes = EXP_CODE_MAP[experienceLevel] || "2";
@@ -38,155 +62,111 @@ async function collectLinkedinJobs(keywords, experienceLevel = "0-1", location =
 
   const jobs = [];
 
-  await withBrowser(async (browser) => {
-    for (const keyword of cleanKws) {
-      const searchUrl =
-        `https://www.linkedin.com/jobs/search/` +
+  for (const keyword of cleanKws) {
+    try {
+      // LinkedIn's public guest search API — no login required
+      const url =
+        `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search` +
         `?keywords=${encodeURIComponent(keyword)}` +
         `&f_E=${encodeURIComponent(expCodes)}` +
-        `&sortBy=DD&f_JT=F%2CP%2CC` +
-        (locParam ? `&location=${encodeURIComponent(locParam)}` : "");
+        `&sortBy=DD` +
+        `&f_JT=F%2CP%2CC` +
+        (locParam ? `&location=${encodeURIComponent(locParam)}` : "") +
+        `&start=0`;
 
-      console.log(`[LinkedIn] URL: ${searchUrl}`);
+      console.log(`[LinkedIn] URL: ${url}`);
 
-      const keywordJobs = await withPage(browser, async (page) => {
-        try {
-          await page.goto(searchUrl, {
-            waitUntil: "domcontentloaded",
-            timeout: IS_PRODUCTION ? 60_000 : 30_000,
-          });
-        } catch (navErr) {
-          console.log(`  [LinkedIn] Navigation error: ${navErr.message} — trying anyway`);
-        }
-
-        await sleep(IS_PRODUCTION ? 4000 : 2000, IS_PRODUCTION ? 6000 : 3000);
-
-        // Dismiss login modal
-        await dismissModal(page);
-
-        // Scroll to trigger lazy loading
-        for (let i = 0; i < 3; i++) {
-          await page.evaluate(() => window.scrollBy(0, 600)).catch(() => {});
-          await sleep(400, 800);
-        }
-
-        // ── Extract cards ──────────────────────────────────────────────────
-        const cards = await page.$$(
-          ".jobs-search__results-list li, " +
-          "[data-occludable-job-id], " +
-          ".base-card, " +
-          "ul.jobs-search__results-list > li, " +
-          ".job-card-container, " +
-          "div[class*='job'][class*='card'], " +
-          "article[data-job-id]"
-        );
-        console.log(`  Cards: ${cards.length}`);
-        if (!cards.length) {
-          console.log("  [LinkedIn] No cards — may be blocked or layout changed");
-          return [];
-        }
-
-        const found = [];
-
-        for (const card of cards.slice(0, 15)) {
-          try {
-            const data = await card.evaluate((el) => {
-              const text = (sel) => el.querySelector(sel)?.textContent?.trim() || "";
-
-              const title = text(
-                ".base-search-card__title, h3.base-search-card__title, " +
-                ".job-search-card__title, h3"
-              );
-              const company = text(
-                ".base-search-card__subtitle a, h4.base-search-card__subtitle, " +
-                ".job-search-card__company-name, .base-search-card__subtitle"
-              );
-              const loc = text(
-                ".job-search-card__location, .base-search-card__metadata span, " +
-                ".base-search-card__metadata"
-              );
-
-              const linkEl = el.querySelector(
-                "a.base-card__full-link, a.base-search-card__full-link, " +
-                "a[href*='linkedin.com/jobs/view'], a[href*='/jobs/']"
-              );
-              const link = linkEl?.href?.split("?")[0] || "";
-
-              const snippet   = el.textContent.toLowerCase();
-              const easyApply = snippet.includes("easy apply") ||
-                !!el.querySelector(".job-search-card__easy-apply-label, [aria-label*='Easy Apply']");
-
-              return { title, company, loc, link, snippet, easyApply };
-            });
-
-            if (!data.title || !data.link) continue;
-
-            const expRange    = extractYearsFromText(data.snippet);
-            const expReq      = formatExpRequired(expRange);
-            const expVerified = expRange !== null;
-            const { hardDrop, mismatch, hardMismatch } = checkExpMismatch(expRange, userMin, userMax);
-
-            if (hardDrop) {
-              console.log(`  [P1] Hard-drop '${data.title}': ${expReq}`);
-              continue;
-            }
-
-            console.log(
-              `  ${expVerified ? "✅[P1]" : "🔍[P2]"} ${data.title} @ ${data.company}` +
-              ` | ${data.loc} | req: ${expReq || "unknown"} | EasyApply:${data.easyApply}`
-            );
-
-            found.push({
-              title:             data.title,
-              company:           data.company,
-              location:          data.loc,
-              salary:            "",
-              experience_level:  experienceLevel,
-              exp_required:      expReq,
-              exp_mismatch:      mismatch,
-              exp_hard_mismatch: hardMismatch,
-              exp_verified:      expVerified,
-              apply_link:        data.link,
-              easy_apply:        data.easyApply,
-              source:            "LinkedIn",
-            });
-          } catch (e) {
-            console.log(`  Card error: ${e.message}`);
-          }
-        }
-
-        // NOTE: P2 skipped for LinkedIn — full pages require login
-        return found;
+      const { status, body } = await httpsGet(url, {
+        "Referer": "https://www.linkedin.com/jobs/search/",
+        "X-Requested-With": "XMLHttpRequest",
       });
 
-      jobs.push(...keywordJobs);
-      await sleep(1500, 2500);
-    }
-  });
+      if (status !== 200 || !body.trim()) {
+        console.log(`[linkedin] ✗ HTTP ${status} — skipping`);
+        continue;
+      }
 
-  console.log(`[LinkedIn] Total: ${jobs.length} jobs`);
+      // Response is HTML fragments of job cards
+      const cardRegex = /<li[^>]*>([\s\S]*?)<\/li>/g;
+      let match;
+      const found = [];
+
+      while ((match = cardRegex.exec(body)) !== null && found.length < 15) {
+        const html = match[1];
+
+        // Title
+        const titleMatch = html.match(/class="[^"]*base-search-card__title[^"]*"[^>]*>([\s\S]*?)<\/h3>/);
+        const title = stripHtml(titleMatch?.[1] || "");
+
+        // Company
+        const companyMatch = html.match(/class="[^"]*base-search-card__subtitle[^"]*"[^>]*>([\s\S]*?)<\/(?:h4|a|div)>/);
+        const company = stripHtml(companyMatch?.[1] || "");
+
+        // Location
+        const locMatch = html.match(/class="[^"]*job-search-card__location[^"]*"[^>]*>([\s\S]*?)<\/span>/);
+        const loc = stripHtml(locMatch?.[1] || "");
+
+        // Link
+        const linkMatch = html.match(/href="(https:\/\/www\.linkedin\.com\/jobs\/view\/[^"?]+)/);
+        const link = linkMatch?.[1] || "";
+
+        // Posted time
+        const timeMatch = html.match(/datetime="([^"]+)"/);
+        const postedAt = timeMatch?.[1] || "";
+
+        // Easy Apply
+        const easyApply = /easy.apply/i.test(html);
+
+        if (!title || !link) continue;
+
+        const snippet = stripHtml(html).toLowerCase();
+        const expRange    = extractYearsFromText(snippet);
+        const expReq      = formatExpRequired(expRange);
+        const expVerified = expRange !== null;
+        const { hardDrop, mismatch, hardMismatch } = checkExpMismatch(expRange, userMin, userMax);
+
+        if (hardDrop) {
+          console.log(`  [P1] Hard-drop '${title}': ${expReq}`);
+          continue;
+        }
+
+        const ago = postedAt ? `${postedAt}` : "unknown";
+        console.log(
+          `  ${expVerified ? "✅[P1]" : "🔍[P2]"} ${title} @ ${company}` +
+          ` | ${loc} | ${ago} | req: ${expReq || "unknown"} | EasyApply:${easyApply}`
+        );
+
+        found.push({
+          title,
+          company,
+          location:          loc,
+          salary:            "",
+          experience_level:  experienceLevel,
+          exp_required:      expReq,
+          exp_mismatch:      mismatch,
+          exp_hard_mismatch: hardMismatch,
+          exp_verified:      expVerified,
+          apply_link:        link,
+          easy_apply:        easyApply,
+          source:            "LinkedIn",
+        });
+      }
+
+      console.log(`[LinkedIn] Total: ${found.length} jobs`);
+      jobs.push(...found);
+
+    } catch (err) {
+      console.log(`[linkedin] ✗ Error: ${err.message}`);
+    }
+
+    // Polite delay between keywords
+    await new Promise((r) => setTimeout(r, 1000 + Math.random() * 1000));
+  }
+
   return jobs;
 }
 
-
-// ── Dismiss login modal ───────────────────────────────────────────────────────
-
-async function dismissModal(page) {
-  try {
-    await page.evaluate(() => {
-      const btns = document.querySelectorAll(
-        "button.modal__dismiss, [aria-label='Dismiss'], " +
-        ".contextual-sign-in-modal__modal-dismiss-icon"
-      );
-      btns.forEach((b) => b.click());
-    });
-    await page.keyboard.press("Escape").catch(() => {});
-  } catch { /* silent */ }
-}
-
-
 // ── Keyword cleaner ───────────────────────────────────────────────────────────
-
 function cleanKeywords_(keywords) {
   const VALID = [
     "analyst","engineer","developer","scientist","manager","designer",
@@ -207,6 +187,5 @@ function cleanKeywords_(keywords) {
   }
   return out.length ? out : ["data analyst"];
 }
-
 
 module.exports = { collectLinkedinJobs };

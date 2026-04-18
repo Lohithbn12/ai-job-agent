@@ -2,7 +2,7 @@
  * scrapers/foundit.scraper.js
  * ──────────────────────────────────────────────────────────────────────────
  * Scrapes Foundit.in (formerly Monster India) using Puppeteer.
- * Updated for Render/cloud server compatibility.
+ * Fixed: link extraction was broken (was using el.id — now uses anchor href).
  * ──────────────────────────────────────────────────────────────────────────
  */
 
@@ -16,11 +16,7 @@ const {
   getUserExpRange,
 } = require("../utils/expParser");
 
-const DEEP_VERIFY_LIMIT = IS_PRODUCTION ? 2 : 3;
-
-
 // ── Main export ───────────────────────────────────────────────────────────────
-
 async function collectFounditJobs(keywords, experienceLevel = "0-1", location = "") {
   const { min: userMin, max: userMax } = getUserExpRange(experienceLevel);
   const expRangeParam = `${userMin}~${userMax}`;
@@ -52,34 +48,69 @@ async function collectFounditJobs(keywords, experienceLevel = "0-1", location = 
           console.log(`  [Foundit] Navigation error: ${navErr.message} — trying anyway`);
         }
 
-        await sleep(IS_PRODUCTION ? 4000 : 2000, IS_PRODUCTION ? 6000 : 3000);
+        // Foundit is React-based — needs time to render
+        await sleep(IS_PRODUCTION ? 6000 : 3000, IS_PRODUCTION ? 9000 : 5000);
+
+        // Scroll to trigger lazy-load
+        await page.evaluate(() => window.scrollTo(0, 600)).catch(() => {});
+        await sleep(1000, 1500);
 
         console.log(`  Page: ${await page.title().catch(() => "unknown")}`);
 
         // ── Extract cards ──────────────────────────────────────────────────
-        const cards = await page.$$(
+        let cards = await page.$$(
           ".jobCard, .srpJob, [class*='jobCard'], .cardContainer, " +
-          "[class*='card-container'], article, [data-job-id]"
+          "[class*='card-container'], [data-job-id], [class*='JobCard']"
         );
-        console.log(`  Cards: ${cards.length}`);
+        console.log(`  Cards (attempt 1): ${cards.length}`);
+
+        if (cards.length < 2) {
+          cards = await page.$$("article, [class*='job'][class*='card'], [class*='srp']");
+          console.log(`  Cards (attempt 2): ${cards.length}`);
+        }
+
         if (!cards.length) return [];
 
         const found = [];
 
-        for (const card of cards.slice(0, 10)) {
+        for (const card of cards.slice(0, 12)) {
           try {
             const data = await card.evaluate((el) => {
               const text = (sel) => el.querySelector(sel)?.textContent?.trim() || "";
 
-              const title   = text(".jobTitle");
-              const company = text(".companyName p");
-              const loc     = text(".details.location");
-              const salary  = text(".salary, [class*='salary'], [class*='ctc']");
-              const expText = text(".experienceSalary .details");
-              const link    = el.id ? `https://www.foundit.in/job-detail/${el.id}` : "";
-              const snippet = el.textContent.toLowerCase();
+              const title   = text(".jobTitle, [class*='jobTitle'], h2, h3");
+              const company = text(".companyName p, .companyName, [class*='company']");
+              const loc     = text(".details.location, [class*='location'], .location");
+              const salRaw  = text(".salary, [class*='salary'], [class*='ctc']");
+              const salary  = /not disclosed/i.test(salRaw) ? "" : salRaw;
+              const expText = text(".experienceSalary .details, [class*='experience']");
 
-              return { title, company, loc, salary, expText, link, snippet };
+              // FIX: extract href from anchor, not el.id
+              let link = "";
+              const anchors = el.querySelectorAll("a[href]");
+              for (const a of anchors) {
+                const href = a.href || "";
+                if (href.includes("foundit.in") && (href.includes("/job") || href.includes("/detail"))) {
+                  link = href.split("?")[0];
+                  break;
+                }
+              }
+              // Fallback: use data-job-id to construct URL
+              if (!link) {
+                const jobId = el.getAttribute("data-job-id") ||
+                              el.querySelector("[data-job-id]")?.getAttribute("data-job-id");
+                if (jobId) link = `https://www.foundit.in/job-detail/${jobId}`;
+              }
+              // Last fallback: first anchor
+              if (!link) {
+                const a = el.querySelector("a[href]");
+                if (a?.href) link = a.href.split("?")[0];
+              }
+
+              return {
+                title, company, loc, salary, expText, link,
+                snippet: el.textContent.toLowerCase().slice(0, 500),
+              };
             });
 
             if (!data.title || !data.link) continue;
@@ -115,15 +146,6 @@ async function collectFounditJobs(keywords, experienceLevel = "0-1", location = 
           }
         }
 
-        // P2 — skip on production server
-        if (!IS_PRODUCTION) {
-          const unverified = found.filter((j) => !j.exp_verified).slice(0, DEEP_VERIFY_LIMIT);
-          if (unverified.length) {
-            console.log(`  [P2] Deep-verifying ${unverified.length} jobs...`);
-            await deepVerify(unverified, page, userMin, userMax);
-          }
-        }
-
         return found;
       });
 
@@ -136,38 +158,7 @@ async function collectFounditJobs(keywords, experienceLevel = "0-1", location = 
   return jobs;
 }
 
-
-// ── Deep verify (P2) ──────────────────────────────────────────────────────────
-
-async function deepVerify(jobs, page, userMin, userMax) {
-  for (const job of jobs) {
-    try {
-      console.log(`    [P2] ${job.title.slice(0, 50)}`);
-      await page.goto(job.apply_link, { waitUntil: "domcontentloaded", timeout: 30_000 });
-      await sleep(1500, 2500);
-
-      const bodyText = await page.evaluate(() =>
-        document.body?.innerText?.toLowerCase() || ""
-      ).catch(() => "");
-
-      const expRange = extractYearsFromText(bodyText);
-      if (!expRange) continue;
-
-      job.exp_required  = formatExpRequired(expRange);
-      job.exp_verified  = true;
-      const { hardDrop, mismatch, hardMismatch } = checkExpMismatch(expRange, userMin, userMax);
-      job.exp_mismatch      = mismatch || hardDrop;
-      job.exp_hard_mismatch = hardMismatch || hardDrop;
-      console.log(`    [P2] ${hardDrop ? "MISMATCH" : "OK"}: ${job.exp_required}`);
-    } catch (e) {
-      console.log(`    [P2] Error: ${e.message}`);
-    }
-  }
-}
-
-
 // ── Keyword cleaner ───────────────────────────────────────────────────────────
-
 function cleanKeywords_(keywords) {
   const VALID = [
     "analyst","engineer","developer","scientist","manager","designer",
@@ -188,6 +179,5 @@ function cleanKeywords_(keywords) {
   }
   return out.length ? out : ["data analyst"];
 }
-
 
 module.exports = { collectFounditJobs };
