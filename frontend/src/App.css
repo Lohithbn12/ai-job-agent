@@ -6,7 +6,7 @@
 .app-container {
   min-height: 100vh;
   display: flex;
-  background: #f0f4f9;
+  background: linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
 }
 
 .content-area {
@@ -16,7 +16,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: #f0f4f9;
+  background: linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
   min-height: 100vh;
 }
 
@@ -25,10 +25,10 @@
   position: sticky;
   top: 0;
   z-index: 30;
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(14px);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(30, 111, 212, 0.08);
+  border-bottom: 1px solid rgba(30, 111, 212, 0.12);
   box-shadow: 0 4px 20px rgba(30, 111, 212, 0.08);
   display: flex;
   align-items: center;
@@ -43,7 +43,7 @@
   width: 100%;
   max-width: 1280px;
   align-self: center;
-  background: #f0f4f9;
+  background: linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
   box-sizing: border-box;
 }
 
@@ -56,18 +56,19 @@
 
 .page-title {
   font-family: 'Outfit', sans-serif;
-  font-size: 26px;
+  font-size: 30px;
   font-weight: 800;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.8px;
   color: #0f172a;
 }
 
 .welcome-banner {
-  background: linear-gradient(135deg, #1e6fd4, #0ea5e9);
+  background: linear-gradient(135deg, #1e6fd4, #0ea5e9, #38bdf8);
+  background-size: 200% 200%;
+  animation: gradientMove 6s ease infinite;
   border-radius: 20px;
   padding: 28px;
   margin-bottom: 36px;
-  box-shadow: 0 8px 24px rgba(30, 111, 212, 0.18);
 }
 
 .welcome-badge {
@@ -112,7 +113,7 @@
 }
 
 .page-subtitle {
-  font-size: 14px;
+  font-size: 15px;
   color: #64748b;
   margin-top: 4px;
 }
@@ -123,17 +124,16 @@
 
 .card {
   background: #ffffff;
-  border-radius: 14px;
-  border: 1px solid rgba(30, 111, 212, 0.1);
-  box-shadow: 0 1px 4px rgba(30, 111, 212, 0.06), 0 4px 16px rgba(30, 111, 212, 0.04);
+  border-radius: 16px;
+  border: 1px solid rgba(30, 111, 212, 0.08);
+  box-shadow: 0 6px 20px rgba(30, 111, 212, 0.08);
   padding: 20px;
   transition: all 0.25s ease;
 }
 
 .card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(30, 111, 212, 0.14);
-  border-color: rgba(30, 111, 212, 0.22);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(30, 111, 212, 0.18);
 }
 
 .card-hover { transition: all 0.25s ease; }
@@ -176,8 +176,8 @@
 }
 .dark-input::placeholder { color: #94a3b8; }
 .dark-input:focus {
-  outline: none; border-color: rgba(30, 111, 212, 0.5);
-  box-shadow: 0 0 0 3px rgba(30, 111, 212, 0.1);
+  outline: none; border-color: #1e6fd4;
+  box-shadow: 0 0 0 4px rgba(30, 111, 212, 0.12);
 }
 
 .dark-textarea {
@@ -199,13 +199,30 @@
 }
 
 .btn-primary {
-  padding: 10px 22px;
-  background: linear-gradient(135deg, #1e6fd4, #1558b0);
-  color: white; border: none; border-radius: 8px;
-  font-size: 13.5px; font-weight: 700; cursor: pointer; transition: all 0.15s;
-  box-shadow: 0 4px 16px rgba(30, 111, 212, 0.35);
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #1e6fd4, #0ea5e9);
+  color: white;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 6px 18px rgba(30, 111, 212, 0.35);
 }
-.btn-primary:hover { box-shadow: 0 6px 24px rgba(30, 111, 212, 0.5); transform: translateY(-1px); }
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(30, 111, 212, 0.45);
+}
+
+.premium-job-card {
+  transition: all 0.25s ease;
+}
+
+.premium-job-card:hover {
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 0 14px 36px rgba(30, 111, 212, 0.2);
+}
 
 .btn-ghost {
   padding: 9px 18px; background: #ffffff;
@@ -300,8 +317,8 @@ tr:hover td { background: rgba(30, 111, 212, 0.03); }
 }
 
 .home-dashboard-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 10px 28px rgba(30, 111, 212, 0.16);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 12px 32px rgba(30, 111, 212, 0.18);
   border-color: rgba(30, 111, 212, 0.25);
 }
 
@@ -531,4 +548,10 @@ select.input:focus  { background-color: #ffffff; color: #0f172a; }
   background: rgba(30, 111, 212, 0.08) !important;
   border-color: rgba(30, 111, 212, 0.2) !important;
   color: #1e6fd4 !important;
+}
+
+@keyframes gradientMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }

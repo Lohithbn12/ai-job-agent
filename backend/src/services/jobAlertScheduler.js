@@ -6,11 +6,12 @@
  * → sends email digest if user has email configured.
  *
  * Fixed:
- *   - Concurrency lock: if a run is still active when the next tick fires,
- *     the new tick is skipped — prevents overlapping Puppeteer sessions that
- *     compete for RAM and can OOM on Render free tier.
- *   - Default location set to "India" when alert.location is empty, so
- *     LinkedIn (and other scrapers) don't fall back to US results.
+ *   - Typo correction applied to alert.role BEFORE sending to scrapers, so
+ *     stale DB entries like "data anlyst" get corrected at query time without
+ *     needing a DB migration.
+ *   - Concurrency lock: skips ticks if a previous run is still in-flight.
+ *   - Default location "India" when alert.location is empty (prevents
+ *     LinkedIn/Indeed returning US results).
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -22,11 +23,33 @@ const JobAlert = require("../models/jobAlert.model");
 const Notification = require("../models/notification.model");
 const mongoose = require("mongoose");
 
-// ── Concurrency lock ─────────────────────────────────────────────────────────
-// FIX #6: prevents a second scheduler tick from launching a full scrape run
-// while the previous one is still in-flight (which can happen on slow servers
-// where scraping takes longer than the 30-minute interval).
+// ── Concurrency lock ──────────────────────────────────────────────────────────
 let isRunning = false;
+
+// ── Keyword typo correction (mirrors naukri_scraper.js) ──────────────────────
+// Applied here so stale DB entries with typos are fixed at query time.
+const KEYWORD_CORRECTIONS = {
+  anlyst:    "analyst",
+  analst:    "analyst",
+  anlayst:   "analyst",
+  develper:  "developer",
+  devloper:  "developer",
+  enginer:   "engineer",
+  enginear:  "engineer",
+  manger:    "manager",
+  managr:    "manager",
+  sceintist: "scientist",
+  sientist:  "scientist",
+  desginer:  "designer",
+};
+
+function correctTypos(str) {
+  let out = str;
+  for (const [typo, fix] of Object.entries(KEYWORD_CORRECTIONS)) {
+    out = out.replace(new RegExp(`\\b${typo}\\b`, "gi"), fix);
+  }
+  return out;
+}
 
 // ── Email transporter (optional — only if SMTP env vars set) ─────────────────
 function getTransporter() {
@@ -49,8 +72,15 @@ async function searchJobsForAlert(alert) {
   try {
     const API_BASE = process.env.INTERNAL_API || `http://localhost:${process.env.PORT || 8000}`;
 
-    // FIX #5: default to "India" when no location is set so LinkedIn doesn't
-    // return US jobs. Users can always override by setting alert.location.
+    // FIXED: correct typos in the stored role name so stale DB entries
+    // like "data anlyst" don't produce bad URL slugs and zero results.
+    const correctedRole = correctTypos(alert.role || "");
+    if (correctedRole !== alert.role) {
+      console.log(`[Scheduler] Corrected role typo: "${alert.role}" → "${correctedRole}"`);
+    }
+
+    // FIXED: default to "India" when no location set so LinkedIn/Indeed
+    // don't fall back to US results.
     const effectiveLocation = alert.location && alert.location.trim()
       ? alert.location.trim()
       : "India";
@@ -58,15 +88,15 @@ async function searchJobsForAlert(alert) {
     const res = await axios.post(
       `${API_BASE}/search-jobs/`,
       {
-        roles:            [alert.role],
-        keywords:         [alert.role],
+        roles:            [correctedRole],
+        keywords:         [correctedRole],
         experience_level: alert.experience_level || "0-1",
         location:         effectiveLocation,
         sources:          alert.sources || ["linkedin", "naukri", "indeed"],
         weighted_skills:  [],
         top_skills:       [],
       },
-      { timeout: 60000 }
+      { timeout: 120000 }  // increased from 60s — scraping can take longer on Render
     );
     return res.data.jobs || [];
   } catch (err) {
@@ -77,7 +107,6 @@ async function searchJobsForAlert(alert) {
 
 // ── Deduplicate: filter out jobs already notified ────────────────────────────
 async function filterNewJobs(userId, alertId, jobs) {
-  // Get all apply_links already stored in notifications for this alert
   const existing = await Notification.find(
     { user_id: userId, alert_id: alertId },
     { "jobs.apply_link": 1 }
@@ -121,8 +150,6 @@ async function sendEmailNotification(userEmail, userName, alert, newJobs) {
 <head><meta charset="utf-8"/></head>
 <body style="margin:0;padding:0;background:#f8fafc;font-family:'Segoe UI',sans-serif;">
   <div style="max-width:600px;margin:32px auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-    
-    <!-- Header -->
     <div style="background:linear-gradient(135deg,#1e3a6e,#1e6fd4);padding:32px 36px;">
       <div style="font-size:28px;margin-bottom:8px;">⚡ JobSpark</div>
       <h1 style="color:white;margin:0;font-size:22px;font-weight:800;">
@@ -132,8 +159,6 @@ async function sendEmailNotification(userEmail, userName, alert, newJobs) {
         Hi ${userName || "there"} — we found new matches for your job alert!
       </p>
     </div>
-
-    <!-- Body -->
     <div style="padding:28px 36px;">
       <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
         <thead>
@@ -144,15 +169,10 @@ async function sendEmailNotification(userEmail, userName, alert, newJobs) {
         </thead>
         <tbody>${jobRows}</tbody>
       </table>
-
-      ${
-        newJobs.length > 10
-          ? `<p style="color:#94a3b8;font-size:13px;text-align:center;margin-top:16px;">+ ${newJobs.length - 10} more jobs in your dashboard</p>`
-          : ""
-      }
+      ${newJobs.length > 10
+        ? `<p style="color:#94a3b8;font-size:13px;text-align:center;margin-top:16px;">+ ${newJobs.length - 10} more jobs in your dashboard</p>`
+        : ""}
     </div>
-
-    <!-- Footer -->
     <div style="padding:20px 36px;background:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
       <p style="color:#94a3b8;font-size:12px;margin:0;">
         © 2025 JobSpark AI Career Suite · You're receiving this because you set up a job alert.
@@ -179,14 +199,12 @@ async function sendEmailNotification(userEmail, userName, alert, newJobs) {
 async function processAlert(alert) {
   console.log(`[Scheduler] Processing alert: "${alert.role}" (user: ${alert.user_id})`);
 
-  // Search jobs
   const allJobs = await searchJobsForAlert(alert);
   if (!allJobs.length) {
     console.log(`[Scheduler] No jobs found for "${alert.role}"`);
     return;
   }
 
-  // Filter to only new jobs not yet notified
   const newJobs = await filterNewJobs(alert.user_id, alert._id, allJobs);
   if (!newJobs.length) {
     console.log(`[Scheduler] No NEW jobs for "${alert.role}" (${allJobs.length} found but already notified)`);
@@ -195,7 +213,6 @@ async function processAlert(alert) {
 
   console.log(`[Scheduler] ${newJobs.length} new jobs for "${alert.role}"`);
 
-  // Save in-app notification
   await Notification.create({
     user_id:  alert.user_id,
     alert_id: alert._id,
@@ -214,19 +231,14 @@ async function processAlert(alert) {
     email_sent: false,
   });
 
-  // Update alert stats
   await JobAlert.updateOne(
     { _id: alert._id },
     {
-      $set: {
-        last_checked:        new Date(),
-        last_notified_count: newJobs.length,
-      },
+      $set: { last_checked: new Date(), last_notified_count: newJobs.length },
       $inc: { total_jobs_found: newJobs.length },
     }
   );
 
-  // Send email if user has email (fetch from users collection)
   try {
     const userDoc = await mongoose.connection.db
       .collection("users")
@@ -247,9 +259,10 @@ async function processAlert(alert) {
 
 // ── Main scheduler tick ──────────────────────────────────────────────────────
 async function runScheduler() {
-  // FIX #6: skip this tick if a previous run is still in-flight
+  // FIXED: skip tick if previous run still in-flight — prevents overlapping
+  // Puppeteer sessions competing for RAM on Render free tier
   if (isRunning) {
-    console.log("[Scheduler] Previous run still active — skipping tick to avoid overlap");
+    console.log("[Scheduler] Previous run still active — skipping tick");
     return;
   }
 
@@ -261,13 +274,11 @@ async function runScheduler() {
     console.log(`[Scheduler] ${alerts.length} active alert(s) to process`);
     for (const alert of alerts) {
       await processAlert(alert);
-      // Small delay between alerts to avoid hammering scrapers
       await new Promise((r) => setTimeout(r, 3000));
     }
   } catch (err) {
     console.error("[Scheduler] Tick failed:", err.message);
   } finally {
-    // Always release the lock, even if an error occurred
     isRunning = false;
     console.log(`[Scheduler] Tick complete — ${new Date().toISOString()}`);
   }
@@ -275,10 +286,9 @@ async function runScheduler() {
 
 // ── Start ────────────────────────────────────────────────────────────────────
 function startJobAlertScheduler() {
-  const INTERVAL_MS = parseInt(process.env.ALERT_INTERVAL_MS || "1800000"); // 30 min default
+  const INTERVAL_MS = parseInt(process.env.ALERT_INTERVAL_MS || "1800000");
   console.log(`✅ Job Alert Scheduler started — interval: ${INTERVAL_MS / 60000} min`);
 
-  // Run once after 2 min on startup (give server time to boot), then every interval
   setTimeout(() => {
     runScheduler();
     setInterval(runScheduler, INTERVAL_MS);

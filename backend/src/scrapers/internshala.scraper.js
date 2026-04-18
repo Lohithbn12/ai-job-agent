@@ -2,7 +2,12 @@
  * scrapers/internshala.scraper.js
  * ──────────────────────────────────────────────────────────────────────────
  * Scrapes Internshala job listings using Puppeteer.
- * Fixed: better link extraction, improved card selectors, scroll-to-load.
+ * Fixed:
+ *   - Deduplication by apply_link (82 cards were being found due to
+ *     `.internship_meta` matching both the card AND its inner elements)
+ *   - Relevance filter: skip jobs whose title doesn't match the keyword
+ *     (e.g. "Cashier", "Packing Executive" appearing in results)
+ *   - Better link extraction, improved card selectors, scroll-to-load
  * ──────────────────────────────────────────────────────────────────────────
  */
 
@@ -48,7 +53,6 @@ async function collectInternshalaJobs(keywords, experienceLevel = "0-1", locatio
 
         await sleep(IS_PRODUCTION ? 5000 : 2500, IS_PRODUCTION ? 7000 : 4000);
 
-        // Scroll to trigger lazy loading
         await page.evaluate(() => window.scrollTo(0, 500)).catch(() => {});
         await sleep(800, 1200);
         await page.evaluate(() => window.scrollTo(0, 1000)).catch(() => {});
@@ -57,23 +61,34 @@ async function collectInternshalaJobs(keywords, experienceLevel = "0-1", locatio
         console.log(`  Page: ${await page.title().catch(() => "unknown")}`);
 
         // ── Extract cards ──────────────────────────────────────────────────
+        // IMPORTANT: `.internship_meta` is an INNER element of each card,
+        // not the card itself — using it as the selector returns one element
+        // per card field, causing massive inflation (82 "cards" for ~10 jobs).
+        // Use the outer wrapper `.individual_internship` instead.
         let cards = await page.$$(
-          ".internship_meta, .job-internship-card, [data-internship_id], " +
           ".individual_internship, .container-fluid.individual_internship"
         );
         console.log(`  Cards (attempt 1): ${cards.length}`);
 
         if (cards.length < 2) {
-          cards = await page.$$(".individual_internship, #internship_list_container > div, .internship-list-container > div");
+          cards = await page.$$("#internship_list_container > div, .internship-list-container > div");
           console.log(`  Cards (attempt 2): ${cards.length}`);
         }
 
         if (cards.length < 2) {
-          cards = await page.$$("[class*='internship'], [class*='job'][class*='card'], article");
+          cards = await page.$$("[data-internship_id], .job-internship-card");
           console.log(`  Cards (attempt 3): ${cards.length}`);
         }
 
+        if (cards.length < 2) {
+          cards = await page.$$("[class*='internship'][class*='card'], article");
+          console.log(`  Cards (attempt 4): ${cards.length}`);
+        }
+
         if (!cards.length) return [];
+
+        // Pre-compute keyword tokens for relevance checking
+        const kwTokens = keyword.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
 
         const found = [];
 
@@ -126,7 +141,6 @@ async function collectInternshalaJobs(keywords, experienceLevel = "0-1", locatio
                   break;
                 }
               }
-              // Fallback: any internshala link
               if (!link) {
                 for (const a of allAnchors) {
                   if (a.href?.includes("internshala.com")) {
@@ -135,7 +149,6 @@ async function collectInternshalaJobs(keywords, experienceLevel = "0-1", locatio
                   }
                 }
               }
-              // Relative URL fallback
               if (!link) {
                 const a = el.querySelector("a[href^='/']");
                 if (a) link = `https://internshala.com${a.getAttribute("href").split("?")[0]}`;
@@ -148,6 +161,17 @@ async function collectInternshalaJobs(keywords, experienceLevel = "0-1", locatio
             });
 
             if (!data.title || !data.link) continue;
+
+            // FIXED: relevance filter — skip jobs unrelated to the keyword.
+            // Internshala sometimes pads results with generic openings from
+            // partner sites (EarlyJobs etc.) that have nothing to do with
+            // the searched role.
+            const titleLower = data.title.toLowerCase();
+            const isRelevant = kwTokens.some((token) => titleLower.includes(token));
+            if (!isRelevant) {
+              console.log(`  [Internshala] Irrelevant job skipped: "${data.title}" (keyword: "${keyword}")`);
+              continue;
+            }
 
             const expRange    = extractYearsFromText(data.snippet);
             const expReq      = formatExpRequired(expRange);
@@ -180,7 +204,19 @@ async function collectInternshalaJobs(keywords, experienceLevel = "0-1", locatio
           }
         }
 
-        return found;
+        // FIXED: deduplicate by apply_link — the old selector `.internship_meta`
+        // caused the same job to appear multiple times in the `cards` list
+        const seenLinks = new Set();
+        const deduped = found.filter((j) => {
+          if (!j.apply_link || seenLinks.has(j.apply_link)) return false;
+          seenLinks.add(j.apply_link);
+          return true;
+        });
+        if (deduped.length !== found.length) {
+          console.log(`  [Internshala] Deduped ${found.length} → ${deduped.length} jobs`);
+        }
+
+        return deduped;
       });
 
       jobs.push(...keywordJobs);

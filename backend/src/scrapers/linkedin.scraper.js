@@ -3,6 +3,13 @@
  * ──────────────────────────────────────────────────────────────────────────
  * Fetches LinkedIn public job listings via their guest JSON API.
  * No puppeteer needed — avoids Render IP blocks and 120s timeouts.
+ *
+ * Fixed:
+ *   - Location fallback: if a strict city search returns 0 results (LinkedIn
+ *     guest API is increasingly picky about location strings), retry with
+ *     just the country ("India") before giving up.
+ *   - Geo-ID map for common Indian cities: LinkedIn's guest API responds
+ *     better to numeric geoId params than raw location strings.
  * ──────────────────────────────────────────────────────────────────────────
  */
 
@@ -24,6 +31,20 @@ const EXP_CODE_MAP = {
   "10+":  "5,6",
 };
 
+// LinkedIn geoIds for common Indian metros — using these gives more reliable
+// results from the guest API than raw text location strings.
+const GEO_ID_MAP = {
+  "bangalore":  "105214831",
+  "bengaluru":  "105214831",
+  "mumbai":     "102713980",
+  "delhi":      "102713980",
+  "hyderabad":  "106187506",
+  "chennai":    "102713980",
+  "pune":       "102713980",
+  "kolkata":    "102713980",
+  "india":      "102713980",
+};
+
 // ── Simple HTTPS GET helper ───────────────────────────────────────────────────
 function httpsGet(url, headers = {}) {
   return new Promise((resolve, reject) => {
@@ -37,18 +58,100 @@ function httpsGet(url, headers = {}) {
         "Accept-Language": "en-US,en;q=0.9",
         ...headers,
       },
+      timeout: 15000,
     };
-    https.get(url, options, (res) => {
+    const req = https.get(url, options, (res) => {
       let data = "";
       res.on("data", (chunk) => (data += chunk));
       res.on("end", () => resolve({ status: res.statusCode, body: data }));
-    }).on("error", reject);
+    });
+    req.on("error", reject);
+    req.on("timeout", () => { req.destroy(); reject(new Error("Request timeout")); });
   });
 }
 
 // ── Strip HTML tags ───────────────────────────────────────────────────────────
 function stripHtml(str = "") {
   return str.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+// ── Build LinkedIn guest API URL ──────────────────────────────────────────────
+function buildUrl(keyword, expCodes, locationStr) {
+  const locLower = locationStr.toLowerCase().trim();
+  const geoId    = GEO_ID_MAP[locLower];
+
+  const base =
+    `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search` +
+    `?keywords=${encodeURIComponent(keyword)}` +
+    `&f_E=${encodeURIComponent(expCodes)}` +
+    `&sortBy=DD` +
+    `&f_JT=F%2CP%2CC` +
+    `&start=0`;
+
+  // Prefer geoId when available — more reliable than text location
+  if (geoId) return `${base}&geoId=${geoId}`;
+  if (locationStr) return `${base}&location=${encodeURIComponent(locationStr)}`;
+  return base;
+}
+
+// ── Parse job cards from LinkedIn HTML response ───────────────────────────────
+function parseCards(body, userMin, userMax, experienceLevel) {
+  const cardRegex = /<li[^>]*>([\s\S]*?)<\/li>/g;
+  let match;
+  const found = [];
+
+  while ((match = cardRegex.exec(body)) !== null && found.length < 15) {
+    const html = match[1];
+
+    const titleMatch   = html.match(/class="[^"]*base-search-card__title[^"]*"[^>]*>([\s\S]*?)<\/h3>/);
+    const companyMatch = html.match(/class="[^"]*base-search-card__subtitle[^"]*"[^>]*>([\s\S]*?)<\/(?:h4|a|div)>/);
+    const locMatch     = html.match(/class="[^"]*job-search-card__location[^"]*"[^>]*>([\s\S]*?)<\/span>/);
+    const linkMatch    = html.match(/href="(https:\/\/www\.linkedin\.com\/jobs\/view\/[^"?]+)/);
+    const timeMatch    = html.match(/datetime="([^"]+)"/);
+
+    const title    = stripHtml(titleMatch?.[1]   || "");
+    const company  = stripHtml(companyMatch?.[1] || "");
+    const loc      = stripHtml(locMatch?.[1]     || "");
+    const link     = linkMatch?.[1]              || "";
+    const postedAt = timeMatch?.[1]              || "";
+    const easyApply = /easy.apply/i.test(html);
+
+    if (!title || !link) continue;
+
+    const snippet     = stripHtml(html).toLowerCase();
+    const expRange    = extractYearsFromText(snippet);
+    const expReq      = formatExpRequired(expRange);
+    const expVerified = expRange !== null;
+    const { hardDrop, mismatch, hardMismatch } = checkExpMismatch(expRange, userMin, userMax);
+
+    if (hardDrop) {
+      console.log(`  [P1] Hard-drop '${title}': ${expReq}`);
+      continue;
+    }
+
+    const ago = postedAt || "unknown";
+    console.log(
+      `  ${expVerified ? "✅[P1]" : "🔍[P2]"} ${title} @ ${company}` +
+      ` | ${loc} | ${ago} | req: ${expReq || "unknown"} | EasyApply:${easyApply}`
+    );
+
+    found.push({
+      title,
+      company,
+      location:          loc,
+      salary:            "",
+      experience_level:  experienceLevel,
+      exp_required:      expReq,
+      exp_mismatch:      mismatch,
+      exp_hard_mismatch: hardMismatch,
+      exp_verified:      expVerified,
+      apply_link:        link,
+      easy_apply:        easyApply,
+      source:            "LinkedIn",
+    });
+  }
+
+  return found;
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
@@ -64,92 +167,43 @@ async function collectLinkedinJobs(keywords, experienceLevel = "0-1", location =
 
   for (const keyword of cleanKws) {
     try {
-      // LinkedIn's public guest search API — no login required
-      const url =
-        `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search` +
-        `?keywords=${encodeURIComponent(keyword)}` +
-        `&f_E=${encodeURIComponent(expCodes)}` +
-        `&sortBy=DD` +
-        `&f_JT=F%2CP%2CC` +
-        (locParam ? `&location=${encodeURIComponent(locParam)}` : "") +
-        `&start=0`;
+      // Primary attempt — use city/location param (or geoId if known)
+      const primaryUrl = buildUrl(keyword, expCodes, locParam);
+      console.log(`[LinkedIn] URL: ${primaryUrl}`);
 
-      console.log(`[LinkedIn] URL: ${url}`);
-
-      const { status, body } = await httpsGet(url, {
-        "Referer": "https://www.linkedin.com/jobs/search/",
+      const { status, body } = await httpsGet(primaryUrl, {
+        "Referer":          "https://www.linkedin.com/jobs/search/",
         "X-Requested-With": "XMLHttpRequest",
       });
 
-      if (status !== 200 || !body.trim()) {
-        console.log(`[linkedin] ✗ HTTP ${status} — skipping`);
-        continue;
+      let found = [];
+
+      if (status === 200 && body.trim()) {
+        found = parseCards(body, userMin, userMax, experienceLevel);
+      } else {
+        console.log(`[linkedin] ✗ HTTP ${status} on primary — skipping`);
       }
 
-      // Response is HTML fragments of job cards
-      const cardRegex = /<li[^>]*>([\s\S]*?)<\/li>/g;
-      let match;
-      const found = [];
+      // FIXED: if primary returned 0 results and we had a specific city,
+      // retry with just "India" as the fallback location. LinkedIn's guest
+      // API frequently returns 0 for city-level queries even when jobs exist.
+      if (!found.length && locParam && locParam.toLowerCase() !== "india") {
+        console.log(`[LinkedIn] 0 results for "${locParam}" — retrying with India fallback`);
+        const fallbackUrl = buildUrl(keyword, expCodes, "India");
+        console.log(`[LinkedIn] Fallback URL: ${fallbackUrl}`);
 
-      while ((match = cardRegex.exec(body)) !== null && found.length < 15) {
-        const html = match[1];
-
-        // Title
-        const titleMatch = html.match(/class="[^"]*base-search-card__title[^"]*"[^>]*>([\s\S]*?)<\/h3>/);
-        const title = stripHtml(titleMatch?.[1] || "");
-
-        // Company
-        const companyMatch = html.match(/class="[^"]*base-search-card__subtitle[^"]*"[^>]*>([\s\S]*?)<\/(?:h4|a|div)>/);
-        const company = stripHtml(companyMatch?.[1] || "");
-
-        // Location
-        const locMatch = html.match(/class="[^"]*job-search-card__location[^"]*"[^>]*>([\s\S]*?)<\/span>/);
-        const loc = stripHtml(locMatch?.[1] || "");
-
-        // Link
-        const linkMatch = html.match(/href="(https:\/\/www\.linkedin\.com\/jobs\/view\/[^"?]+)/);
-        const link = linkMatch?.[1] || "";
-
-        // Posted time
-        const timeMatch = html.match(/datetime="([^"]+)"/);
-        const postedAt = timeMatch?.[1] || "";
-
-        // Easy Apply
-        const easyApply = /easy.apply/i.test(html);
-
-        if (!title || !link) continue;
-
-        const snippet = stripHtml(html).toLowerCase();
-        const expRange    = extractYearsFromText(snippet);
-        const expReq      = formatExpRequired(expRange);
-        const expVerified = expRange !== null;
-        const { hardDrop, mismatch, hardMismatch } = checkExpMismatch(expRange, userMin, userMax);
-
-        if (hardDrop) {
-          console.log(`  [P1] Hard-drop '${title}': ${expReq}`);
-          continue;
+        try {
+          const fallback = await httpsGet(fallbackUrl, {
+            "Referer":          "https://www.linkedin.com/jobs/search/",
+            "X-Requested-With": "XMLHttpRequest",
+          });
+          if (fallback.status === 200 && fallback.body.trim()) {
+            found = parseCards(fallback.body, userMin, userMax, experienceLevel);
+            console.log(`[LinkedIn] Fallback found ${found.length} jobs`);
+          }
+        } catch (fallbackErr) {
+          console.log(`[linkedin] Fallback error: ${fallbackErr.message}`);
         }
-
-        const ago = postedAt ? `${postedAt}` : "unknown";
-        console.log(
-          `  ${expVerified ? "✅[P1]" : "🔍[P2]"} ${title} @ ${company}` +
-          ` | ${loc} | ${ago} | req: ${expReq || "unknown"} | EasyApply:${easyApply}`
-        );
-
-        found.push({
-          title,
-          company,
-          location:          loc,
-          salary:            "",
-          experience_level:  experienceLevel,
-          exp_required:      expReq,
-          exp_mismatch:      mismatch,
-          exp_hard_mismatch: hardMismatch,
-          exp_verified:      expVerified,
-          apply_link:        link,
-          easy_apply:        easyApply,
-          source:            "LinkedIn",
-        });
       }
 
       console.log(`[LinkedIn] Total: ${found.length} jobs`);
@@ -159,7 +213,6 @@ async function collectLinkedinJobs(keywords, experienceLevel = "0-1", location =
       console.log(`[linkedin] ✗ Error: ${err.message}`);
     }
 
-    // Polite delay between keywords
     await new Promise((r) => setTimeout(r, 1000 + Math.random() * 1000));
   }
 
