@@ -2,8 +2,11 @@
  * scrapers/apna.scraper.js
  * ──────────────────────────────────────────────────────────────────────────
  * Scrapes Apna.co job listings using Puppeteer.
- * Fixed: longer waits for JS-heavy rendering, better card selectors,
- * login-wall detection improved.
+ * Fixed:
+ *   - Relevance filter: skips jobs whose title doesn't match the keyword
+ *     (Apna sometimes ignores query params and returns generic homepage jobs)
+ *   - Longer waits for JS-heavy rendering, better card selectors,
+ *     improved login-wall detection
  * ──────────────────────────────────────────────────────────────────────────
  */
 
@@ -111,6 +114,10 @@ async function collectApnaJobs(keywords, experienceLevel = "0-1", location = "")
           return [];
         }
 
+        // FIX #4: pre-compute keyword words for relevance checking
+        // Split keyword into meaningful tokens (skip short words like "in", "at")
+        const kwTokens = keyword.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+
         const found = [];
 
         for (const card of cards.slice(0, 12)) {
@@ -182,6 +189,17 @@ async function collectApnaJobs(keywords, experienceLevel = "0-1", location = "")
             });
 
             if (!data.title || !data.link) continue;
+
+            // FIX #4: Relevance check — ensure at least one keyword token
+            // appears in the job title. This filters out unrelated jobs that
+            // appear when Apna ignores the designation query param and falls
+            // back to its generic job listing page.
+            const titleLower = data.title.toLowerCase();
+            const isRelevant = kwTokens.some((token) => titleLower.includes(token));
+            if (!isRelevant) {
+              console.log(`  [Apna] Irrelevant job skipped: "${data.title}" (keyword: "${keyword}")`);
+              continue;
+            }
 
             const expRange    = extractYearsFromText(data.snippet);
             const expReq      = formatExpRequired(expRange);

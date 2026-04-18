@@ -2,7 +2,9 @@
  * scrapers/foundit.scraper.js
  * ──────────────────────────────────────────────────────────────────────────
  * Scrapes Foundit.in (formerly Monster India) using Puppeteer.
- * Fixed: link extraction was broken (was using el.id — now uses anchor href).
+ * Fixed:
+ *   - Access Denied detection before card parsing (was silently returning 0)
+ *   - Link extraction was broken (was using el.id — now uses anchor href)
  * ──────────────────────────────────────────────────────────────────────────
  */
 
@@ -55,7 +57,29 @@ async function collectFounditJobs(keywords, experienceLevel = "0-1", location = 
         await page.evaluate(() => window.scrollTo(0, 600)).catch(() => {});
         await sleep(1000, 1500);
 
-        console.log(`  Page: ${await page.title().catch(() => "unknown")}`);
+        const pageTitle = await page.title().catch(() => "");
+        console.log(`  Page: ${pageTitle}`);
+
+        // FIX #2: Detect access denial BEFORE attempting to parse cards.
+        // Previously, "Access Denied" was logged but parsing continued, wasting
+        // time and producing confusing "0 cards" logs.
+        if (/access denied|403|forbidden|blocked|robot/i.test(pageTitle)) {
+          console.log("  [Foundit] Access Denied by server — skipping keyword");
+          return [];
+        }
+
+        // Also check body text for soft blocks (e.g. Cloudflare challenge pages)
+        const bodyText = await page.evaluate(() =>
+          (document.body?.innerText || "").toLowerCase().slice(0, 500)
+        ).catch(() => "");
+
+        if (
+          /access denied|enable javascript|checking your browser|just a moment/i.test(bodyText) &&
+          !/job|vacancy|opening|result/i.test(bodyText)
+        ) {
+          console.log("  [Foundit] Soft block detected — skipping keyword");
+          return [];
+        }
 
         // ── Extract cards ──────────────────────────────────────────────────
         let cards = await page.$$(
@@ -85,7 +109,7 @@ async function collectFounditJobs(keywords, experienceLevel = "0-1", location = 
               const salary  = /not disclosed/i.test(salRaw) ? "" : salRaw;
               const expText = text(".experienceSalary .details, [class*='experience']");
 
-              // FIX: extract href from anchor, not el.id
+              // Extract href from anchor — NOT el.id
               let link = "";
               const anchors = el.querySelectorAll("a[href]");
               for (const a of anchors) {

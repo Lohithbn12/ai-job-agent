@@ -2,7 +2,10 @@
  * scrapers/naukri.scraper.js
  * ──────────────────────────────────────────────────────────────────────────
  * Scrapes Naukri.com job listings using Puppeteer.
- * Fixed for Render: better selectors, longer waits, scroll-to-load.
+ * Fixed:
+ *   - Keyword typo correction (e.g. "anlyst" → "analyst")
+ *   - Deduplication of cards by apply_link (overlapping CSS selectors)
+ *   - Raised fallback thresholds so strategy 4 only runs when truly needed
  * ──────────────────────────────────────────────────────────────────────────
  */
 
@@ -16,6 +19,30 @@ const {
   getUserExpRange,
 } = require("../utils/expParser");
 
+// ── Typo corrections for common keyword misspellings ─────────────────────────
+const KEYWORD_CORRECTIONS = {
+  anlyst:    "analyst",
+  analst:    "analyst",
+  anlayst:   "analyst",
+  develper:  "developer",
+  devloper:  "developer",
+  enginer:   "engineer",
+  enginear:  "engineer",
+  manger:    "manager",
+  managr:    "manager",
+  sceintist: "scientist",
+  sientist:  "scientist",
+  desginer:  "designer",
+};
+
+function correctTypos(str) {
+  let out = str;
+  for (const [typo, fix] of Object.entries(KEYWORD_CORRECTIONS)) {
+    out = out.replace(new RegExp(`\\b${typo}\\b`, "gi"), fix);
+  }
+  return out;
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "") {
   const { min: userMin, max: userMax } = getUserExpRange(experienceLevel);
@@ -27,7 +54,9 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
 
   await withBrowser(async (browser) => {
     for (const keyword of cleanKws) {
-      const kwSlug  = keyword.toLowerCase().replace(/\s+/g, "-");
+      // FIX #3: correct typos before building the URL slug
+      const corrected = correctTypos(keyword);
+      const kwSlug  = corrected.toLowerCase().replace(/\s+/g, "-");
       const locSlug = location.split(",")[0].trim().toLowerCase().replace(/\s+/g, "-");
 
       const searchUrl = locSlug
@@ -39,9 +68,9 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
       const keywordJobs = await withPage(browser, async (page) => {
         // Anti-bot headers
         await page.setExtraHTTPHeaders({
-          "Referer": "https://www.google.com/",
-          "Sec-CH-UA": '"Chromium";v="124", "Google Chrome";v="124", "Not:A-Brand";v="99"',
-          "Sec-CH-UA-Mobile": "?0",
+          "Referer":            "https://www.google.com/",
+          "Sec-CH-UA":          '"Chromium";v="124", "Google Chrome";v="124", "Not:A-Brand";v="99"',
+          "Sec-CH-UA-Mobile":   "?0",
           "Sec-CH-UA-Platform": '"Windows"',
         });
 
@@ -62,14 +91,9 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
         // Wait for initial render then scroll to trigger lazy-load
         await sleep(IS_PRODUCTION ? 6000 : 3000, IS_PRODUCTION ? 9000 : 5000);
 
-        // Scroll down to trigger lazy loading of job cards
-        await page.evaluate(() => {
-          window.scrollTo(0, 400);
-        }).catch(() => {});
+        await page.evaluate(() => window.scrollTo(0, 400)).catch(() => {});
         await sleep(1500, 2500);
-        await page.evaluate(() => {
-          window.scrollTo(0, 800);
-        }).catch(() => {});
+        await page.evaluate(() => window.scrollTo(0, 800)).catch(() => {});
         await sleep(1000, 1500);
 
         const pageTitle = await page.title().catch(() => "");
@@ -86,7 +110,8 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
         }
 
         // ── Try multiple selector strategies ──────────────────────────────
-        // Naukri uses dynamic class names — we use multiple fallback selectors
+        // FIX #1: raised thresholds from < 3 to < 5 so broader strategies
+        // only run when earlier ones genuinely failed to find enough cards.
         let cards = [];
 
         // Strategy 1: article tags with job-related classes (most reliable)
@@ -94,19 +119,19 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
         console.log(`  Strategy 1 (article): ${cards.length}`);
 
         // Strategy 2: data-job-id attribute
-        if (cards.length < 3) {
+        if (cards.length < 5) {
           cards = await page.$$("[data-job-id]");
           console.log(`  Strategy 2 (data-job-id): ${cards.length}`);
         }
 
         // Strategy 3: srp job wrapper divs
-        if (cards.length < 3) {
+        if (cards.length < 5) {
           cards = await page.$$(".srp-jobtuple-wrapper, .jobTuple, .job-tuple");
           console.log(`  Strategy 3 (srp-wrapper): ${cards.length}`);
         }
 
         // Strategy 4: broad — any div/article that looks like a job card
-        if (cards.length < 3) {
+        if (cards.length < 5) {
           cards = await page.$$(
             "div[class*='jobCard'], div[class*='JobCard'], " +
             "div[class*='job-card'], div[class*='srp']"
@@ -115,15 +140,13 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
         }
 
         // Strategy 5: last resort — any list item or article in main content
-        if (cards.length < 3) {
+        if (cards.length < 5) {
           cards = await page.$$("main article, main li[class*='job'], .list article");
           console.log(`  Strategy 5 (main article): ${cards.length}`);
         }
 
         if (!cards.length) {
-          // Debug: log what's actually on the page
           const domSummary = await page.evaluate(() => {
-            const els = document.querySelectorAll("article, [data-job-id], [class*='job']");
             return `articles: ${document.querySelectorAll("article").length}, ` +
                    `data-job-id: ${document.querySelectorAll("[data-job-id]").length}, ` +
                    `job-class: ${document.querySelectorAll("[class*='job']").length}`;
@@ -139,7 +162,7 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
             const data = await card.evaluate((el) => {
               const text = (sel) => el.querySelector(sel)?.textContent?.trim() || "";
 
-              // Title — try multiple selectors
+              // Title
               let title = "";
               for (const sel of [
                 "a.title", ".title a", "a.jobTitle", ".jobTitle a",
@@ -236,7 +259,20 @@ async function collectNaukriJobs(keywords, experienceLevel = "0-1", location = "
           }
         }
 
-        return found;
+        // FIX #1: deduplicate by apply_link to eliminate cards matched by
+        // multiple overlapping strategies
+        const seenLinks = new Set();
+        const deduped = found.filter((j) => {
+          if (!j.apply_link || seenLinks.has(j.apply_link)) return false;
+          seenLinks.add(j.apply_link);
+          return true;
+        });
+
+        if (deduped.length !== found.length) {
+          console.log(`  [Naukri] Deduped ${found.length} → ${deduped.length} jobs`);
+        }
+
+        return deduped;
       }, { skipAntiBot: true });
 
       jobs.push(...keywordJobs);
@@ -260,8 +296,9 @@ function cleanKeywords_(keywords) {
   const seen = new Set();
   const out  = [];
   for (const kw of keywords) {
-    const clean = kw.replace(/\n/g, " ").trim();
-    const lower = clean.toLowerCase();
+    // FIX #3: correct typos before validating
+    const clean   = correctTypos(kw.replace(/\n/g, " ").trim());
+    const lower   = clean.toLowerCase();
     if (seen.has(lower)) continue;
     if (!VALID.some((v) => lower.includes(v))) continue;
     seen.add(lower);

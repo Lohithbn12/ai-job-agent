@@ -4,6 +4,13 @@
  * Runs every 30 minutes.
  * For each active alert → searches job portals → saves new jobs as notifications
  * → sends email digest if user has email configured.
+ *
+ * Fixed:
+ *   - Concurrency lock: if a run is still active when the next tick fires,
+ *     the new tick is skipped — prevents overlapping Puppeteer sessions that
+ *     compete for RAM and can OOM on Render free tier.
+ *   - Default location set to "India" when alert.location is empty, so
+ *     LinkedIn (and other scrapers) don't fall back to US results.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -14,6 +21,12 @@ const nodemailer = require("nodemailer");
 const JobAlert = require("../models/jobAlert.model");
 const Notification = require("../models/notification.model");
 const mongoose = require("mongoose");
+
+// ── Concurrency lock ─────────────────────────────────────────────────────────
+// FIX #6: prevents a second scheduler tick from launching a full scrape run
+// while the previous one is still in-flight (which can happen on slow servers
+// where scraping takes longer than the 30-minute interval).
+let isRunning = false;
 
 // ── Email transporter (optional — only if SMTP env vars set) ─────────────────
 function getTransporter() {
@@ -35,16 +48,23 @@ function getTransporter() {
 async function searchJobsForAlert(alert) {
   try {
     const API_BASE = process.env.INTERNAL_API || `http://localhost:${process.env.PORT || 8000}`;
+
+    // FIX #5: default to "India" when no location is set so LinkedIn doesn't
+    // return US jobs. Users can always override by setting alert.location.
+    const effectiveLocation = alert.location && alert.location.trim()
+      ? alert.location.trim()
+      : "India";
+
     const res = await axios.post(
       `${API_BASE}/search-jobs/`,
       {
-        roles: [alert.role],
-        keywords: [alert.role],
+        roles:            [alert.role],
+        keywords:         [alert.role],
         experience_level: alert.experience_level || "0-1",
-        location: alert.location || "",
-        sources: alert.sources || ["linkedin", "naukri", "indeed"],
-        weighted_skills: [],
-        top_skills: [],
+        location:         effectiveLocation,
+        sources:          alert.sources || ["linkedin", "naukri", "indeed"],
+        weighted_skills:  [],
+        top_skills:       [],
       },
       { timeout: 60000 }
     );
@@ -79,7 +99,7 @@ async function sendEmailNotification(userEmail, userName, alert, newJobs) {
   const jobRows = newJobs
     .slice(0, 10)
     .map(
-      (j, i) => `
+      (j) => `
       <tr style="border-bottom:1px solid #e2e8f0;">
         <td style="padding:12px 8px;">
           <strong style="color:#0f172a;">${j.title || "Job Opening"}</strong><br/>
@@ -144,8 +164,8 @@ async function sendEmailNotification(userEmail, userName, alert, newJobs) {
 
   try {
     await transporter.sendMail({
-      from: `"JobSpark Alerts" <${process.env.SMTP_USER}>`,
-      to: userEmail,
+      from:    `"JobSpark Alerts" <${process.env.SMTP_USER}>`,
+      to:      userEmail,
       subject: `🔔 ${newJobs.length} new "${alert.role}" jobs found — JobSpark`,
       html,
     });
@@ -177,20 +197,20 @@ async function processAlert(alert) {
 
   // Save in-app notification
   await Notification.create({
-    user_id: alert.user_id,
+    user_id:  alert.user_id,
     alert_id: alert._id,
-    type: "new_jobs",
-    title: `${newJobs.length} new "${alert.role}" jobs found`,
-    message: `We found ${newJobs.length} new job${newJobs.length > 1 ? "s" : ""} matching your alert for "${alert.role}"${alert.location ? ` in ${alert.location}` : ""}.`,
+    type:     "new_jobs",
+    title:    `${newJobs.length} new "${alert.role}" jobs found`,
+    message:  `We found ${newJobs.length} new job${newJobs.length > 1 ? "s" : ""} matching your alert for "${alert.role}"${alert.location ? ` in ${alert.location}` : ""}.`,
     jobs: newJobs.slice(0, 20).map((j) => ({
-      title: j.title,
-      company: j.company,
-      location: j.location,
+      title:      j.title,
+      company:    j.company,
+      location:   j.location,
       apply_link: j.apply_link,
-      source: j.source,
-      salary: j.salary || "",
+      source:     j.source,
+      salary:     j.salary || "",
     })),
-    is_read: false,
+    is_read:    false,
     email_sent: false,
   });
 
@@ -199,7 +219,7 @@ async function processAlert(alert) {
     { _id: alert._id },
     {
       $set: {
-        last_checked: new Date(),
+        last_checked:        new Date(),
         last_notified_count: newJobs.length,
       },
       $inc: { total_jobs_found: newJobs.length },
@@ -212,7 +232,9 @@ async function processAlert(alert) {
       .collection("users")
       .findOne({ _id: new mongoose.Types.ObjectId(alert.user_id) });
     if (userDoc?.email) {
-      const notif = await Notification.findOne({ user_id: alert.user_id, alert_id: alert._id }).sort({ created_at: -1 });
+      const notif = await Notification.findOne(
+        { user_id: alert.user_id, alert_id: alert._id }
+      ).sort({ created_at: -1 });
       if (notif) {
         await sendEmailNotification(userDoc.email, userDoc.name, alert, newJobs);
         await Notification.updateOne({ _id: notif._id }, { $set: { email_sent: true } });
@@ -225,7 +247,15 @@ async function processAlert(alert) {
 
 // ── Main scheduler tick ──────────────────────────────────────────────────────
 async function runScheduler() {
+  // FIX #6: skip this tick if a previous run is still in-flight
+  if (isRunning) {
+    console.log("[Scheduler] Previous run still active — skipping tick to avoid overlap");
+    return;
+  }
+
+  isRunning = true;
   console.log(`[Scheduler] Tick — ${new Date().toISOString()}`);
+
   try {
     const alerts = await JobAlert.find({ is_active: true });
     console.log(`[Scheduler] ${alerts.length} active alert(s) to process`);
@@ -236,6 +266,10 @@ async function runScheduler() {
     }
   } catch (err) {
     console.error("[Scheduler] Tick failed:", err.message);
+  } finally {
+    // Always release the lock, even if an error occurred
+    isRunning = false;
+    console.log(`[Scheduler] Tick complete — ${new Date().toISOString()}`);
   }
 }
 
