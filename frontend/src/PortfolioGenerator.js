@@ -8,46 +8,37 @@ import { API } from "./constants";
 
 // ── colours ───────────────────────────────────────────────────────────────────
 const C = {
-  ocean:      "#1e6fd4",
-  oceanDim:   "#1558b0",
-  oceanSoft:  "rgba(30,111,212,0.07)",
-  oceanBorder:"rgba(30,111,212,0.18)",
-  teal:       "#0891b2",
-  tealSoft:   "rgba(8,145,178,0.08)",
-  tealBorder: "rgba(8,145,178,0.22)",
-  navy:       "#0a1628",
-  navyCard:   "#0f1f3d",
-  white:      "#ffffff",
-  bg:         "#f0f4f9",
-  text:       "#0f172a",
-  text2:      "#475569",
-  text3:      "#94a3b8",
-  border:     "rgba(30,111,212,0.12)",
-  green:      "#16a34a",
-  greenSoft:  "rgba(22,163,74,0.08)",
-  greenBorder:"rgba(22,163,74,0.22)",
-  red:        "#dc2626",
-  redSoft:    "rgba(220,38,38,0.08)",
-  redBorder:  "rgba(220,38,38,0.2)",
+  ocean:      "#f59e0b",
+  oceanDim:   "#d97706",
+  oceanSoft:  "rgba(245,158,11,0.08)",
+  oceanBorder:"rgba(245,158,11,0.2)",
+  teal:       "#34d399",
+  tealSoft:   "rgba(52,211,153,0.08)",
+  tealBorder: "rgba(52,211,153,0.2)",
+  navy:       "#12121c",
+  navyCard:   "#1c1c28",
+  white:      "#f1f1f5",
+  bg:         "#0d0d14",
+  text:       "#f1f1f5",
+  text2:      "#8888a8",
+  text3:      "#444460",
+  border:     "rgba(255,255,255,0.06)",
+  green:      "#34d399",
+  greenSoft:  "rgba(52,211,153,0.08)",
+  greenBorder:"rgba(52,211,153,0.2)",
+  red:        "#fb7185",
+  redSoft:    "rgba(251,63,99,0.08)",
+  redBorder:  "rgba(251,63,99,0.2)",
 };
 
 // ── tiny helpers ──────────────────────────────────────────────────────────────
-const Spinner = () => (
-  <span style={{
-    display: "inline-block", width: 14, height: 14,
-    border: `2px solid ${C.oceanSoft}`, borderTopColor: C.ocean,
-    borderRadius: "50%", animation: "spin 0.7s linear infinite",
-    verticalAlign: "middle",
-  }} />
-);
-
 const Step = ({ n, label, active, done }) => (
   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
     <div style={{
       width: 28, height: 28, borderRadius: "50%", display: "flex",
       alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700,
       flexShrink: 0,
-      background: done ? C.green : active ? C.ocean : "rgba(30,111,212,0.1)",
+      background: done ? C.green : active ? C.ocean : "rgba(245,158,11,0.1)",
       color: (done || active) ? "white" : C.text3,
       boxShadow: active ? `0 0 0 4px ${C.oceanSoft}` : "none",
       transition: "all .3s",
@@ -154,7 +145,7 @@ export default function PortfolioGenerator() {
         background: C.white,
         borderRadius: 14,
         border: `1px solid ${C.border}`,
-        boxShadow: `0 1px 4px rgba(30,111,212,0.06)`,
+        boxShadow: `0 1px 4px rgba(245,158,11,0.06)`,
         flexWrap: "wrap", alignItems: "center",
       }}>
         <Step n={1} label="Upload Resume"        active={step === 1} done={step > 1} />
@@ -179,7 +170,7 @@ export default function PortfolioGenerator() {
               borderRadius: 16, padding: "52px 32px", textAlign: "center",
               cursor: "pointer", transition: "all .2s",
               background: dragging ? C.oceanSoft : file ? C.greenSoft : C.white,
-              boxShadow: `0 1px 4px rgba(30,111,212,0.06)`,
+              boxShadow: `0 1px 4px rgba(245,158,11,0.06)`,
             }}
           >
             <input ref={inputRef} type="file" accept=".pdf" style={{ display: "none" }}
@@ -226,7 +217,7 @@ export default function PortfolioGenerator() {
                   background: theme === t.key ? C.oceanSoft : C.white,
                   border: `1.5px solid ${theme === t.key ? C.ocean : C.border}`,
                   transition: "all .15s",
-                  boxShadow: theme === t.key ? `0 2px 12px rgba(30,111,212,0.12)` : "none",
+                  boxShadow: theme === t.key ? `0 2px 12px rgba(245,158,11,0.12)` : "none",
                 }}>
                   <div style={{
                     fontSize: 13, fontWeight: 700,
@@ -255,7 +246,7 @@ export default function PortfolioGenerator() {
           {/* generate btn */}
           <button onClick={handleGenerate} disabled={!file} style={{
             padding: "15px 32px",
-            background: file ? `linear-gradient(135deg, ${C.ocean}, ${C.oceanDim})` : "rgba(30,111,212,0.06)",
+            background: file ? `linear-gradient(135deg, ${C.ocean}, ${C.oceanDim})` : "rgba(245,158,11,0.06)",
             border: `1px solid ${file ? C.ocean : C.border}`,
             borderRadius: 12, fontSize: 15, fontWeight: 700,
             color: file ? "white" : C.text3,
@@ -264,7 +255,7 @@ export default function PortfolioGenerator() {
             display: "flex", alignItems: "center", gap: 10,
             width: "100%", justifyContent: "center",
             transition: "all .2s",
-            boxShadow: file ? `0 4px 20px rgba(30,111,212,0.3)` : "none",
+            boxShadow: file ? `0 4px 20px rgba(245,158,11,0.3)` : "none",
           }}>
             ✨ Generate My Portfolio
           </button>
@@ -278,7 +269,7 @@ export default function PortfolioGenerator() {
           justifyContent: "center", padding: "80px 32px", gap: 24,
           background: C.white, borderRadius: 18,
           border: `1px solid ${C.border}`,
-          boxShadow: `0 4px 20px rgba(30,111,212,0.08)`,
+          boxShadow: `0 4px 20px rgba(245,158,11,0.08)`,
         }}>
           <div style={{ position: "relative", width: 72, height: 72 }}>
             <div style={{
@@ -328,7 +319,7 @@ export default function PortfolioGenerator() {
             background: C.white,
             borderRadius: 14,
             border: `1px solid ${C.border}`,
-            boxShadow: `0 1px 4px rgba(30,111,212,0.06)`,
+            boxShadow: `0 1px 4px rgba(245,158,11,0.06)`,
           }}>
             <span style={{ fontSize: 13, color: C.green, fontWeight: 700, marginRight: "auto" }}>
               ✅ Portfolio ready!
@@ -353,7 +344,7 @@ export default function PortfolioGenerator() {
               border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700,
               color: "white", cursor: "pointer",
               display: "flex", alignItems: "center", gap: 6,
-              boxShadow: `0 4px 14px rgba(30,111,212,0.3)`,
+              boxShadow: `0 4px 14px rgba(245,158,11,0.3)`,
             }}>
               ⬇️ Download HTML
             </button>
@@ -373,8 +364,8 @@ export default function PortfolioGenerator() {
           {/* deploy hint */}
           <div style={{
             padding: "12px 18px",
-            background: "rgba(30,111,212,0.05)",
-            border: `1px solid rgba(30,111,212,0.15)`,
+            background: "rgba(245,158,11,0.05)",
+            border: `1px solid rgba(245,158,11,0.15)`,
             borderRadius: 12, fontSize: 13,
             color: C.text2, lineHeight: 1.7,
           }}>
@@ -389,7 +380,7 @@ export default function PortfolioGenerator() {
           <div style={{
             borderRadius: 16, overflow: "hidden",
             border: `1px solid ${C.border}`,
-            boxShadow: `0 8px 40px rgba(30,111,212,0.12)`,
+            boxShadow: `0 8px 40px rgba(245,158,11,0.12)`,
           }}>
             {/* browser chrome bar */}
             <div style={{
@@ -417,7 +408,7 @@ export default function PortfolioGenerator() {
               srcDoc={portfolioHtml}
               title="Portfolio Preview"
               sandbox="allow-scripts"
-              style={{ width: "100%", height: 680, border: "none", background: "white" }}
+              style={{ width: "100%", height: 680, border: "none", background: "#1c1c28" }}
             />
           </div>
         </div>

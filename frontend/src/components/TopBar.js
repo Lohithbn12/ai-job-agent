@@ -1,6 +1,5 @@
 // ─── TopBar.js ────────────────────────────────────────────────────────────────
-// Top header bar — hamburger, home button, greeting, live clock,
-// notification bell, activity history button, current mode label, job count chip.
+// Obsidian Night top bar — dark luxury editorial
 
 import React, { useState } from "react";
 import LiveClock from "./LiveClock";
@@ -8,19 +7,20 @@ import { MODE_LABELS } from "../navConfig";
 import ActivityPanel from "./ActivityPanel";
 import { useActivityState, useAppContext, A } from "../context/AppContext";
 
-export default function TopBar({ mode, setMode, setSidebarOpen, greeting, greetEmoji, firstName, notificationCount, jobs, step }) {
+export default function TopBar({
+  mode, setMode, setSidebarOpen,
+  greeting, greetEmoji, firstName,
+  notificationCount, jobs, step,
+}) {
   const [showActivity, setShowActivity] = useState(false);
-  const { searchHistory, recentActivity } = useActivityState();
+  const { recentActivity } = useActivityState();
   const { dispatch } = useAppContext();
+  const activityCount = recentActivity.length;
 
-  // Redo handlers wired back into global state so the search re-runs
   const handleRedoJobSearch = (entry) => {
     setShowActivity(false);
     setMode("jobs");
-    // Restore the roles from the history entry and jump to step 2
-    if (entry.meta?.roles?.length) {
-      dispatch({ type: A.SET_ROLES, payload: entry.meta.roles });
-    }
+    if (entry.meta?.roles?.length) dispatch({ type: A.SET_ROLES, payload: entry.meta.roles });
     dispatch({ type: A.SET_JOB_STEP, payload: 2 });
   };
 
@@ -30,15 +30,13 @@ export default function TopBar({ mode, setMode, setSidebarOpen, greeting, greetE
     dispatch({ type: A.SET_COURSE_KEYWORD, payload: query });
   };
 
-  const activityCount = recentActivity.length;
-
   return (
     <header className="top-bar" style={{ position: "relative" }}>
       <div className="top-bar-left">
         <button className="hamburger" onClick={() => setSidebarOpen(true)}>☰</button>
         <button className="home-btn" onClick={() => setMode("home")} title="Go to Home">🏠</button>
         <div className="topbar-divider" />
-        <span style={{ fontSize: 22 }}>{greetEmoji}</span>
+        <span style={{ fontSize: 20 }}>{greetEmoji}</span>
         <div>
           <div className="topbar-greeting">{greeting}, {firstName}</div>
           <div className="topbar-date">
@@ -48,25 +46,26 @@ export default function TopBar({ mode, setMode, setSidebarOpen, greeting, greetE
       </div>
 
       <div className="top-bar-right">
+        {/* Clock */}
         <div className="tb-chip tb-chip-clock"><LiveClock /></div>
 
-        {/* 🕐 Activity history toggle */}
+        {/* Activity */}
         <div
           className="tb-chip"
           onClick={() => setShowActivity(v => !v)}
-          title="Search History & Activity"
+          title="Activity & History"
           style={{
             cursor: "pointer",
-            background: showActivity ? "rgba(30,111,212,0.12)" : undefined,
-            border: showActivity ? "1px solid rgba(30,111,212,0.3)" : undefined,
+            background: showActivity ? "rgba(245,158,11,0.1)" : undefined,
+            border: showActivity ? "1px solid rgba(245,158,11,0.25)" : undefined,
             position: "relative",
           }}
         >
           🕐
           {activityCount > 0 && (
             <span style={{
-              position: "absolute", top: -4, right: -4,
-              background: "#1e6fd4", color: "white",
+              position: "absolute", top: -5, right: -5,
+              background: "#f59e0b", color: "#0a0a0f",
               borderRadius: "50%", fontSize: 9, fontWeight: 800,
               padding: "1px 5px", lineHeight: 1.4,
             }}>
@@ -75,33 +74,35 @@ export default function TopBar({ mode, setMode, setSidebarOpen, greeting, greetE
           )}
         </div>
 
-        {/* 🔔 Notifications */}
+        {/* Notifications */}
         <div
           className="tb-chip tb-chip-notif"
           onClick={() => setMode("alerts")}
           style={{ cursor: "pointer", position: "relative" }}
         >
-          🔔{" "}
+          🔔
           {notificationCount > 0
-            ? <span style={{ background: "#e11d48", color: "white", borderRadius: "50%", fontSize: 10, fontWeight: 800, padding: "1px 5px", marginLeft: 2 }}>{notificationCount}</span>
-            : 0}
+            ? <span style={{
+                background: "#fb7185", color: "white",
+                borderRadius: "50%", fontSize: 10, fontWeight: 800,
+                padding: "1px 5px", marginLeft: 2,
+              }}>{notificationCount}</span>
+            : <span style={{ color: "var(--subtle)", marginLeft: 2 }}>0</span>}
         </div>
 
+        {/* Mode label */}
         <div className="tb-chip tb-chip-mode">{MODE_LABELS[mode] || mode}</div>
 
+        {/* Job count */}
         {mode === "jobs" && step === 3 && (
           <div className="tb-chip tb-chip-count">{jobs.length} positions</div>
         )}
       </div>
 
-      {/* ── Activity panel dropdown ──────────────────────────────────────────── */}
+      {/* Activity panel */}
       {showActivity && (
         <>
-          {/* Click-away backdrop */}
-          <div
-            onClick={() => setShowActivity(false)}
-            style={{ position: "fixed", inset: 0, zIndex: 99 }}
-          />
+          <div onClick={() => setShowActivity(false)} style={{ position: "fixed", inset: 0, zIndex: 99 }} />
           <div style={{
             position: "absolute",
             top: "calc(100% + 8px)",

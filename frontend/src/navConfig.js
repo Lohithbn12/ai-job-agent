@@ -1,5 +1,5 @@
 // ─── navConfig.js ─────────────────────────────────────────────────────────────
-// Navigation items, home dashboard cards, and mode labels for the sidebar/topbar.
+// Navigation items, home dashboard cards, and mode labels — Obsidian Night theme
 
 export const NAV_ALL = [
   { key: "home",      icon: "🏠", label: "Home",              sub: "Dashboard" },
@@ -15,14 +15,14 @@ export const NAV_ALL = [
 ];
 
 export const HOME_CARDS = [
-  { icon: "💼", title: "Job Search",        desc: "Parse resume & search 5 job boards simultaneously", key: "jobs",      bg: "rgba(30,111,212,0.08)",  border: "rgba(30,111,212,0.18)" },
-  { icon: "📄", title: "Resume Maker",      desc: "ATS-optimized builder with 150 templates",          key: "ats",       bg: "rgba(13,148,136,0.08)",  border: "rgba(13,148,136,0.18)" },
-  { icon: "🎓", title: "Free Courses",      desc: "YouTube, Coursera, edX & Google — free only",       key: "courses",   bg: "rgba(14,165,233,0.08)",  border: "rgba(14,165,233,0.18)" },
-  { icon: "🎯", title: "Interview Prep",    desc: "Q&A predictor · Aptitude · Coding rounds",          key: "interview", bg: "rgba(139,92,246,0.08)",  border: "rgba(139,92,246,0.18)" },
-  { icon: "🔗", title: "LinkedIn Analyzer", desc: "Score & optimize your LinkedIn profile",            key: "linkedin",  bg: "rgba(59,130,246,0.08)",  border: "rgba(59,130,246,0.18)" },
-  { icon: "🌐", title: "Portfolio Builder", desc: "Turn your resume into a live website",              key: "portfolio", bg: "rgba(16,185,129,0.08)",  border: "rgba(16,185,129,0.18)" },
+  { icon: "💼", title: "Job Search",        desc: "Parse resume & search 5 job boards simultaneously", key: "jobs",      bg: "rgba(245,158,11,0.08)",  border: "rgba(245,158,11,0.18)" },
+  { icon: "📄", title: "Resume Maker",      desc: "ATS-optimized builder with 150 templates",          key: "ats",       bg: "rgba(52,211,153,0.08)",  border: "rgba(52,211,153,0.18)" },
+  { icon: "🎓", title: "Free Courses",      desc: "YouTube, Coursera, edX & Google — free only",       key: "courses",   bg: "rgba(56,189,248,0.08)",  border: "rgba(56,189,248,0.18)" },
+  { icon: "🎯", title: "Interview Prep",    desc: "Q&A predictor · Aptitude · Coding rounds",          key: "interview", bg: "rgba(167,139,250,0.08)", border: "rgba(167,139,250,0.18)" },
+  { icon: "🔗", title: "LinkedIn Analyzer", desc: "Score & optimize your LinkedIn profile",            key: "linkedin",  bg: "rgba(56,189,248,0.08)",  border: "rgba(56,189,248,0.18)" },
+  { icon: "🌐", title: "Portfolio Builder", desc: "Turn your resume into a live website",              key: "portfolio", bg: "rgba(52,211,153,0.08)",  border: "rgba(52,211,153,0.18)" },
   { icon: "📈", title: "Stock Predictor",   desc: "AI-powered market trend analysis",                 key: "stocks",    bg: "rgba(245,158,11,0.08)",  border: "rgba(245,158,11,0.18)" },
-  { icon: "🔔", title: "Job Alerts",        desc: "Role-based automatic notifications",               key: "alerts",    bg: "rgba(217,70,239,0.08)",  border: "rgba(217,70,239,0.18)" },
+  { icon: "🔔", title: "Job Alerts",        desc: "Role-based automatic notifications",               key: "alerts",    bg: "rgba(251,63,99,0.08)",   border: "rgba(251,63,99,0.18)" },
 ];
 
 export const MODE_LABELS = {

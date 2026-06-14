@@ -6,26 +6,279 @@
  * Charts: Price line, Candlestick, Volume bar, RSI, Prediction bars
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import axios from "axios";
 import { API } from "./constants";
 
 // ─── Colors ──────────────────────────────────────────────────────
-const UP      = "#00e676";
-const DOWN    = "#ff5252";
-const FLAT    = "#ffab40";
-const teal    = "#22d3ee";
-const cardBg  = "#0a1628";
-const border  = "rgba(255,255,255,0.08)";
-const textMuted = "rgba(255,255,255,0.45)";
-const textMain  = "rgba(255,255,255,0.92)";
-const bg        = "#060e1e";
+const UP        = "#34d399";
+const DOWN      = "#fb7185";
+const FLAT      = "#f59e0b";
+const teal      = "#f59e0b";
+const cardBg    = "#1c1c28";
+const border    = "rgba(255,255,255,0.08)";
+const textMuted = "#8888a8";
+const textMain  = "#f1f1f5";
+const bg        = "#0d0d14";
+
+// ─── All stocks — same list as backend POPULAR_STOCKS ────────────
+const ALL_STOCKS = [
+  // 🇺🇸 US
+  { symbol: "AAPL",          name: "Apple Inc.",                region: "US", sector: "Technology"     },
+  { symbol: "MSFT",          name: "Microsoft Corp.",           region: "US", sector: "Technology"     },
+  { symbol: "GOOGL",         name: "Alphabet Inc.",             region: "US", sector: "Technology"     },
+  { symbol: "AMZN",          name: "Amazon.com Inc.",           region: "US", sector: "Consumer"       },
+  { symbol: "NVDA",          name: "NVIDIA Corp.",              region: "US", sector: "Technology"     },
+  { symbol: "META",          name: "Meta Platforms Inc.",       region: "US", sector: "Technology"     },
+  { symbol: "TSLA",          name: "Tesla Inc.",                region: "US", sector: "Automotive"     },
+  { symbol: "JPM",           name: "JPMorgan Chase",            region: "US", sector: "Finance"        },
+  { symbol: "V",             name: "Visa Inc.",                 region: "US", sector: "Finance"        },
+  { symbol: "JNJ",           name: "Johnson & Johnson",         region: "US", sector: "Healthcare"     },
+  { symbol: "WMT",           name: "Walmart Inc.",              region: "US", sector: "Retail"         },
+  { symbol: "XOM",           name: "ExxonMobil Corp.",          region: "US", sector: "Energy"         },
+  // 🇮🇳 India
+  { symbol: "RELIANCE.NS",   name: "Reliance Industries",       region: "IN", sector: "Conglomerate"   },
+  { symbol: "TCS.NS",        name: "Tata Consultancy Services", region: "IN", sector: "Technology"     },
+  { symbol: "HDFCBANK.NS",   name: "HDFC Bank",                 region: "IN", sector: "Finance"        },
+  { symbol: "INFY.NS",       name: "Infosys Ltd.",              region: "IN", sector: "Technology"     },
+  { symbol: "ICICIBANK.NS",  name: "ICICI Bank",                region: "IN", sector: "Finance"        },
+  { symbol: "WIPRO.NS",      name: "Wipro Ltd.",                region: "IN", sector: "Technology"     },
+  { symbol: "SBIN.NS",       name: "State Bank of India",       region: "IN", sector: "Finance"        },
+  { symbol: "BAJFINANCE.NS", name: "Bajaj Finance",             region: "IN", sector: "Finance"        },
+  { symbol: "TATAMOTORS.NS", name: "Tata Motors",               region: "IN", sector: "Automotive"     },
+  { symbol: "ADANIENT.NS",   name: "Adani Enterprises",         region: "IN", sector: "Conglomerate"   },
+  { symbol: "HINDUNILVR.NS", name: "Hindustan Unilever",        region: "IN", sector: "FMCG"           },
+  { symbol: "KOTAKBANK.NS",  name: "Kotak Mahindra Bank",       region: "IN", sector: "Finance"        },
+  { symbol: "AXISBANK.NS",   name: "Axis Bank",                 region: "IN", sector: "Finance"        },
+  { symbol: "LT.NS",         name: "Larsen & Toubro",           region: "IN", sector: "Infrastructure" },
+  { symbol: "ZOMATO.NS",     name: "Zomato Ltd.",               region: "IN", sector: "Technology"     },
+  { symbol: "MARUTI.NS",     name: "Maruti Suzuki",             region: "IN", sector: "Automotive"     },
+  { symbol: "SUNPHARMA.NS",  name: "Sun Pharmaceutical",        region: "IN", sector: "Healthcare"     },
+  { symbol: "TITAN.NS",      name: "Titan Company",             region: "IN", sector: "Consumer"       },
+  { symbol: "HCLTECH.NS",    name: "HCL Technologies",          region: "IN", sector: "Technology"     },
+];
 
 // ─── Helpers ─────────────────────────────────────────────────────
 const fmt = (v, currency) =>
   v == null ? "N/A" : `${currency === "INR" ? "₹" : "$"}${Number(v).toLocaleString()}`;
 
 const pctColor = (v) => (v > 0 ? UP : v < 0 ? DOWN : FLAT);
+
+// ─── Stock Dropdown ───────────────────────────────────────────────
+/**
+ * Behaviour:
+ *  • Shows the text input + a "▼" chevron button.
+ *  • Clicking the chevron (or the input when empty) opens the panel.
+ *  • When closed  → first batch of 8 stocks (unsorted, original order).
+ *  • When open    → full list sorted A-Z by company name,
+ *                   further filtered by whatever the user types.
+ *  • Clicking a row selects it, closes the panel, and triggers predict.
+ */
+function StockDropdown({ onSelect, selectedSymbol }) {
+  const [open,    setOpen]    = useState(false);
+  const [query,   setQuery]   = useState("");
+  const [sorted,  setSorted]  = useState(false);   // true when chevron was clicked
+  const wrapRef               = useRef(null);
+
+  // Close on outside click
+  useEffect(() => {
+    function handleClick(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false);
+        setSorted(false);
+        setQuery("");
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  // Which stocks to show in the panel
+  const visibleStocks = (() => {
+    const q = query.trim().toLowerCase();
+
+    // Always filter by query if user typed something
+    let list = q
+      ? ALL_STOCKS.filter(
+          (s) =>
+            s.symbol.toLowerCase().includes(q) ||
+            s.name.toLowerCase().includes(q) ||
+            s.sector.toLowerCase().includes(q)
+        )
+      : [...ALL_STOCKS];
+
+    // Sort A-Z when opened via chevron; otherwise keep original order (first 8 preview)
+    if (sorted || q) {
+      list = list.slice().sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      list = list.slice(0, 8);   // initial preview batch
+    }
+
+    return list;
+  })();
+
+  function openSorted() {
+    setSorted(true);
+    setOpen(true);
+  }
+
+  function openPreview() {
+    setSorted(false);
+    setOpen(true);
+  }
+
+  function select(stock) {
+    setOpen(false);
+    setSorted(false);
+    setQuery("");
+    onSelect(stock.symbol);
+  }
+
+  const selected = ALL_STOCKS.find((s) => s.symbol === selectedSymbol);
+
+  return (
+    <div ref={wrapRef} style={{ position: "relative", flex: 1, minWidth: 220 }}>
+
+      {/* ── Trigger row ── */}
+      <div style={{ display: "flex", gap: 0, borderRadius: 12, overflow: "hidden",
+                    border: `1.5px solid ${open ? teal : border}`,
+                    background: "rgba(255,255,255,0.05)", transition: "border-color .2s" }}>
+
+        {/* Text input */}
+        <input
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); setSorted(true); }}
+          onFocus={openPreview}
+          placeholder={
+            selected
+              ? `${selected.symbol}  —  ${selected.name}`
+              : "Search stock by name or symbol…"
+          }
+          style={{
+            flex: 1, padding: "12px 16px", background: "transparent",
+            border: "none", outline: "none", color: textMain, fontSize: 14,
+            fontFamily: "'Space Grotesk', monospace",
+            caretColor: "#f59e0b",
+          }}
+        />
+
+        {/* Chevron — click to open sorted full list */}
+        <button
+          onClick={() => (open && sorted) ? setOpen(false) : openSorted()}
+          title="Browse all stocks A–Z"
+          style={{
+            padding: "0 16px", background: "transparent", border: "none",
+            borderLeft: `1.5px solid ${border}`, cursor: "pointer",
+            color: open ? teal : textMuted, fontSize: 16,
+            transition: "color .2s, transform .2s",
+            transform: open && sorted ? "scaleY(-1)" : "none",
+            display: "flex", alignItems: "center",
+          }}
+        >
+          ▾
+        </button>
+      </div>
+
+      {/* ── Dropdown panel ── */}
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0,
+          background: "#16161f", border: `1.5px solid rgba(245,158,11,0.25)`,
+          borderRadius: 14, zIndex: 999, overflow: "hidden",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.8)",
+          animation: "fadeUp .15s ease both",
+        }}>
+
+          {/* Header */}
+          <div style={{
+            padding: "10px 14px 8px", borderBottom: `1px solid ${border}`,
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+          }}>
+            <span style={{ fontSize: 10, color: textMuted, fontWeight: 700,
+                           textTransform: "uppercase", letterSpacing: ".8px" }}>
+              {sorted || query
+                ? `${visibleStocks.length} stocks · sorted A–Z`
+                : `Top ${visibleStocks.length} stocks · click ▾ to see all`}
+            </span>
+            {/* Region legend */}
+            <div style={{ display: "flex", gap: 10, fontSize: 10, color: textMuted }}>
+              <span>🇺🇸 US</span>
+              <span>🇮🇳 India</span>
+            </div>
+          </div>
+
+          {/* Rows */}
+          <div style={{ maxHeight: 320, overflowY: "auto" }}>
+            {visibleStocks.length === 0 && (
+              <div style={{ padding: "24px 16px", textAlign: "center",
+                            color: textMuted, fontSize: 13 }}>
+                No stocks match "{query}"
+              </div>
+            )}
+            {visibleStocks.map((s) => {
+              const isSelected = s.symbol === selectedSymbol;
+              const isIN       = s.region === "IN";
+              return (
+                <div
+                  key={s.symbol}
+                  onClick={() => select(s)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 12,
+                    padding: "10px 14px", cursor: "pointer",
+                    background: isSelected ? teal + "18" : "transparent",
+                    borderBottom: `1px solid ${border}`,
+                    transition: "background .15s",
+                  }}
+                  onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? teal + "18" : "transparent"; }}
+                >
+                  {/* Flag */}
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>{isIN ? "🇮🇳" : "🇺🇸"}</span>
+
+                  {/* Symbol + name */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: 13,
+                                  color: isIN ? "#fb923c" : teal,
+                                  fontFamily: "monospace" }}>
+                      {s.symbol}
+                    </div>
+                    <div style={{ fontSize: 11, color: textMuted,
+                                  overflow: "hidden", textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap" }}>
+                      {s.name}
+                    </div>
+                  </div>
+
+                  {/* Sector badge */}
+                  <span style={{
+                    fontSize: 10, padding: "2px 8px", borderRadius: 99,
+                    background: "rgba(255,255,255,0.06)",
+                    color: textMuted, whiteSpace: "nowrap", flexShrink: 0,
+                  }}>{s.sector}</span>
+
+                  {/* Selected tick */}
+                  {isSelected && (
+                    <span style={{ color: teal, fontSize: 14, flexShrink: 0 }}>✓</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer hint */}
+          {!sorted && !query && (
+            <div style={{
+              padding: "8px 14px", borderTop: `1px solid ${border}`,
+              fontSize: 10, color: textMuted, textAlign: "center",
+            }}>
+              Click <strong style={{ color: teal }}>▾</strong> or type to browse all {ALL_STOCKS.length} stocks A–Z
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Chart: Price Line ───────────────────────────────────────────
 function PriceLineChart({ chartData, currency }) {
@@ -48,13 +301,11 @@ function PriceLineChart({ chartData, currency }) {
   const last      = closes[closes.length - 1];
   const lineColor = last >= closes[0] ? UP : DOWN;
 
-  // Y axis labels
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => ({
     y: pad.t + iH * (1 - f),
     v: (minP + f * range).toFixed(0),
   }));
 
-  // X axis labels every ~15 days
   const xLabels = chartData
     .filter((_, i) => i % Math.ceil(chartData.length / 6) === 0)
     .map((d) => ({ x: scaleX(chartData.indexOf(d)), label: d.date.slice(5) }));
@@ -67,28 +318,22 @@ function PriceLineChart({ chartData, currency }) {
           <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
         </linearGradient>
       </defs>
-      {/* Grid lines */}
       {yTicks.map((t, i) => (
         <line key={i} x1={pad.l} y1={t.y} x2={W - pad.r} y2={t.y}
           stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
       ))}
-      {/* Fill */}
       <polygon points={fill} fill="url(#priceFill)" />
-      {/* Line */}
       <polyline points={pts} fill="none" stroke={lineColor} strokeWidth={2} strokeLinejoin="round" />
-      {/* Y axis labels */}
       {yTicks.map((t, i) => (
         <text key={i} x={pad.l - 6} y={t.y + 4} textAnchor="end"
           style={{ fontSize: 9, fill: textMuted, fontFamily: "monospace" }}>
           {currency === "INR" ? "₹" : "$"}{Number(t.v).toLocaleString()}
         </text>
       ))}
-      {/* X axis labels */}
       {xLabels.map((l, i) => (
         <text key={i} x={l.x} y={H - 6} textAnchor="middle"
           style={{ fontSize: 9, fill: textMuted, fontFamily: "monospace" }}>{l.label}</text>
       ))}
-      {/* Current price dashed line */}
       <line x1={pad.l} y1={scaleY(last)} x2={W - pad.r} y2={scaleY(last)}
         stroke={lineColor} strokeWidth={1} strokeDasharray="4 3" opacity={0.5} />
     </svg>
@@ -98,7 +343,6 @@ function PriceLineChart({ chartData, currency }) {
 // ─── Chart: Candlestick ──────────────────────────────────────────
 function CandlestickChart({ chartData, currency }) {
   if (!chartData?.length) return null;
-  // Show last 60 candles max for readability
   const data    = chartData.slice(-60);
   const W = 700, H = 220, pad = { t: 16, b: 32, l: 56, r: 16 };
   const iW = W - pad.l - pad.r;
@@ -145,13 +389,10 @@ function CandlestickChart({ chartData, currency }) {
         const cx   = x + candleW / 2;
         return (
           <g key={i}>
-            {/* Wick */}
             <line x1={cx} y1={scaleY(d.high)} x2={cx} y2={scaleY(d.low)}
               stroke={col} strokeWidth={1} />
-            {/* Body */}
             <rect x={x} y={top} width={candleW} height={bodyH}
-              fill={isUp ? col : col} opacity={isUp ? 0.85 : 0.75}
-              rx={1} />
+              fill={col} opacity={isUp ? 0.85 : 0.75} rx={1} />
           </g>
         );
       })}
@@ -213,7 +454,6 @@ function RsiGauge({ rsi }) {
         <path d="M 15 60 A 45 45 0 0 1 105 60" fill="none"
           stroke={color} strokeWidth={10} strokeLinecap="round"
           strokeDasharray={`${(rsi / 100) * 141} 141`} />
-        {/* Needle */}
         <line
           x1="60" y1="60"
           x2={60 + 32 * Math.cos(((angle - 90) * Math.PI) / 180)}
@@ -298,8 +538,8 @@ export default function StockPredictor() {
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState("");
   const [data,         setData]         = useState(null);
-  const [tab,          setTab]          = useState("predict");       // predict | screener
-  const [chartTab,     setChartTab]     = useState("price");         // price | candle | volume
+  const [tab,          setTab]          = useState("predict");
+  const [chartTab,     setChartTab]     = useState("price");
   const [currency,     setCurrency]     = useState("USD");
 
   // Screener state
@@ -307,9 +547,6 @@ export default function StockPredictor() {
   const [trendFilter,  setTrendFilter]  = useState("all");
   const [screenerData, setScreenerData] = useState(null);
   const [scrLoading,   setScrLoading]   = useState(false);
-
-  const POPULAR_US = ["AAPL","MSFT","GOOGL","NVDA","TSLA","META","AMZN"];
-  const POPULAR_IN = ["RELIANCE.NS","TCS.NS","HDFCBANK.NS","INFY.NS","ZOMATO.NS"];
 
   const handlePredict = useCallback(async (sym) => {
     const s = (sym || symbol).trim().toUpperCase();
@@ -324,6 +561,12 @@ export default function StockPredictor() {
       setError(e.response?.data?.detail || e.message || "Failed to fetch stock data");
     } finally { setLoading(false); }
   }, [symbol]);
+
+  // Called when user picks from dropdown
+  function handleDropdownSelect(sym) {
+    setSymbol(sym);
+    handlePredict(sym);
+  }
 
   const handleScreener = useCallback(async () => {
     setScrLoading(true); setScreenerData(null);
@@ -340,22 +583,15 @@ export default function StockPredictor() {
     } finally { setScrLoading(false); }
   }, [priceFilter, trendFilter]);
 
-  const inp = {
-    padding: "12px 16px", background: "rgba(255,255,255,0.05)",
-    border: `1.5px solid ${border}`, borderRadius: 12, color: textMain,
-    fontSize: 14, outline: "none", width: "100%", boxSizing: "border-box",
-    fontFamily: "'Space Grotesk', monospace",
-  };
-
   const btn = (color = teal, disabled = false) => ({
     padding: "12px 28px", background: color, border: "none", borderRadius: 12,
-    fontSize: 14, fontWeight: 800, color: "#000", cursor: disabled ? "not-allowed" : "pointer",
-    opacity: disabled ? 0.6 : 1, fontFamily: "'Space Grotesk', sans-serif", whiteSpace: "nowrap",
+    fontSize: 14, fontWeight: 800, color: "#0a0a0f", cursor: disabled ? "not-allowed" : "pointer",
+    opacity: disabled ? 0.6 : 1, fontFamily: "'Syne', 'Space Grotesk', sans-serif", fontWeight: 800, whiteSpace: "nowrap",
   });
 
   return (
     <div style={{ background: bg, minHeight: "100vh", padding: "24px 20px",
-                  fontFamily: "'Space Grotesk', sans-serif", color: textMain }}>
+                  fontFamily: "'Bricolage Grotesque', 'Space Grotesk', sans-serif", color: textMain }}>
 
       {/* ── Tabs ── */}
       <div style={{ display: "flex", gap: 8, marginBottom: 28 }}>
@@ -372,44 +608,24 @@ export default function StockPredictor() {
       {/* ══════════════ PREDICT TAB ═══════════════════════════════ */}
       {tab === "predict" && (
         <>
-          {/* Search bar */}
-          <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-            <input
-              style={{ ...inp, flex: 1, minWidth: 200 }}
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-              onKeyDown={(e) => e.key === "Enter" && handlePredict()}
-              placeholder="US: AAPL, TSLA  •  India: RELIANCE.NS, TCS.NS"
+          {/* ── Stock Dropdown + Predict button ── */}
+          <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <StockDropdown
+              onSelect={handleDropdownSelect}
+              selectedSymbol={symbol}
             />
             <button style={btn(teal, loading)} onClick={() => handlePredict()} disabled={loading}>
               {loading ? "Loading…" : "Predict →"}
             </button>
           </div>
 
-          {/* Quick pick chips */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 11, color: textMuted, marginBottom: 8, textTransform: "uppercase",
-                          letterSpacing: ".7px", fontWeight: 600 }}>🇺🇸 US Quick Pick</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-              {POPULAR_US.map((s) => (
-                <button key={s} onClick={() => { setSymbol(s); handlePredict(s); }} style={{
-                  padding: "5px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700,
-                  cursor: "pointer", background: "rgba(255,255,255,0.05)",
-                  border: `1.5px solid ${border}`, color: teal,
-                }}>{s}</button>
-              ))}
-            </div>
-            <div style={{ fontSize: 11, color: textMuted, marginBottom: 8, textTransform: "uppercase",
-                          letterSpacing: ".7px", fontWeight: 600 }}>🇮🇳 Indian Quick Pick</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {POPULAR_IN.map((s) => (
-                <button key={s} onClick={() => { setSymbol(s); handlePredict(s); }} style={{
-                  padding: "5px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700,
-                  cursor: "pointer", background: "rgba(255,255,255,0.05)",
-                  border: `1.5px solid ${border}`, color: "#fb923c",
-                }}>{s}</button>
-              ))}
-            </div>
+          {/* ── Or type a custom symbol hint ── */}
+          <div style={{ fontSize: 11, color: textMuted, marginBottom: 24,
+                        padding: "8px 14px", background: "rgba(245,158,11,0.04)",
+                        borderRadius: 8, border: "1px solid rgba(245,158,11,0.15)" }}>
+            💡 Pick from the dropdown above, or type any symbol directly (e.g.{" "}
+            <span style={{ color: teal, fontFamily: "monospace" }}>NVDA</span>,{" "}
+            <span style={{ color: "#fb923c", fontFamily: "monospace" }}>WIPRO.NS</span>)
           </div>
 
           {/* Error */}
@@ -435,7 +651,7 @@ export default function StockPredictor() {
 
               {/* Header */}
               <div style={{ padding: "20px 24px", background: cardBg,
-                            border: `1.5px solid ${border}`, borderRadius: 16, marginBottom: 16 }}>
+                            border: "1.5px solid rgba(245,158,11,0.15)", borderRadius: 16, marginBottom: 16, boxShadow: "0 0 0 1px rgba(245,158,11,0.05), 0 8px 32px rgba(0,0,0,0.4)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between",
                               alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
                   <div>
@@ -466,8 +682,7 @@ export default function StockPredictor() {
                 <Tile icon="🛡️" label="Support" value={fmt(data.technicals.support, data.currency)} />
                 <Tile icon="⚡" label="Resistance" value={fmt(data.technicals.resistance, data.currency)} />
                 <Tile icon="📅" label="52W Avg" value={fmt(data.technicals.avg52w, data.currency)} />
-                <Tile icon="🌊" label="Ann. Vol" value={`${data.technicals.annualisedVol}%`}
-                  color={FLAT} />
+                <Tile icon="🌊" label="Ann. Vol" value={`${data.technicals.annualisedVol}%`} color={FLAT} />
                 {data.technicals.ma50 && (
                   <Tile icon="〽️" label="MA50"
                     value={fmt(data.technicals.ma50, data.currency)}
@@ -483,7 +698,6 @@ export default function StockPredictor() {
               {/* ── Charts ── */}
               <div style={{ padding: "20px 24px", background: cardBg,
                             border: `1.5px solid ${border}`, borderRadius: 16, marginBottom: 16 }}>
-                {/* Chart tabs */}
                 <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap",
                               alignItems: "center", justifyContent: "space-between" }}>
                   <div style={{ fontSize: 12, color: textMuted, fontWeight: 700,
@@ -647,7 +861,6 @@ export default function StockPredictor() {
               <div style={{ fontSize: 12, color: textMuted, marginBottom: 14 }}>
                 Found <strong style={{ color: textMain }}>{screenerData.count}</strong> stocks
               </div>
-              {/* Header */}
               <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr",
                             gap: 10, padding: "8px 16px", marginBottom: 4 }}>
                 {["Stock","Price","Today","Trend","Sector"].map((h) => (
@@ -700,9 +913,9 @@ export default function StockPredictor() {
       )}
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;800;900&display=swap');
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;600;700;800;900&display=swap');
+        @keyframes spin    { to { transform: rotate(360deg); } }
+        @keyframes fadeUp  { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
         .fade-up { animation: fadeUp .4s ease both; }
       `}</style>
     </div>

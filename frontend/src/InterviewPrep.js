@@ -8,13 +8,13 @@ import axios from "axios";
 import { API } from "./constants";
 
 const DIV_CONFIG = {
-  aptitude:    { label:"Aptitude",    icon:"🧮", color:"#0891b2", bg:"#e0f7fa", desc:"Quantitative, logical, probability, estimation" },
-  theoretical: { label:"Theoretical", icon:"📖", color:"#7c3aed", bg:"#f3e8ff", desc:"Concepts, domain knowledge, system design, trade-offs" },
-  coding:      { label:"Coding",      icon:"💻", color:"#059669", bg:"#d1fae5", desc:"DSA, SQL, Python — full solutions with complexity" },
+  aptitude:    { label:"Aptitude",    icon:"🧮", color:"#38bdf8", bg:"rgba(56,189,248,0.1)", desc:"Quantitative, logical, probability, estimation" },
+  theoretical: { label:"Theoretical", icon:"📖", color:"#a78bfa", bg:"rgba(167,139,250,0.1)", desc:"Concepts, domain knowledge, system design, trade-offs" },
+  coding:      { label:"Coding",      icon:"💻", color:"#34d399", bg:"rgba(52,211,153,0.1)", desc:"DSA, SQL, Python — full solutions with complexity" },
 };
 
-const DIFF_COLOR = { Easy:"#059669", Medium:"#d97706", Hard:"#dc2626" };
-const DIFF_BG    = { Easy:"#d1fae5", Medium:"#fef3c7", Hard:"#fee2e2" };
+const DIFF_COLOR = { Easy:"#34d399", Medium:"#f59e0b", Hard:"#fb7185" };
+const DIFF_BG    = { Easy:"rgba(52,211,153,0.12)", Medium:"rgba(245,158,11,0.12)", Hard:"rgba(251,63,99,0.12)" };
 
 const POPULAR_ROLES = [
   "Data Analyst","Data Scientist","Software Engineer","Machine Learning Engineer",
@@ -126,10 +126,10 @@ export default function InterviewPrep() {
       if (!qs.length) continue;
       const cls = dk === "aptitude" ? "apt" : dk === "theoretical" ? "th" : "cd";
       body += `<h2 class="${cls}">${DIV_CONFIG[dk].icon} ${DIV_CONFIG[dk].label} — ${qs.length} questions</h2>`;
-      qs.forEach((q, i) => {
+      const cards = qs.map((q, i) => {
         const company = q.company || "";
         const source  = q.source  || "";
-        body += `<div class="card">
+        return `<div class="card">
           <div class="qn">Q${i+1}</div>
           <div class="qt">${q.q.replace(/</g,"&lt;")}</div>
           <span class="badge ${q.difficulty||""}">${q.difficulty||"?"}</span>
@@ -139,6 +139,7 @@ export default function InterviewPrep() {
           <div class="ans">${q.a.replace(/</g,"&lt;")}</div>
         </div>`;
       });
+      body += cards.join("");
     }
 
     const win = window.open("", "_blank");
@@ -155,18 +156,18 @@ export default function InterviewPrep() {
     const bm   = !!bookmarked[key];
     const cfg  = DIV_CONFIG[dk];
     return (
-      <div style={{ background:"#0a1628", border:`1.5px solid ${open ? cfg.color+"55" : "rgba(0,0,0,.08)"}`, borderRadius:13, marginBottom:10, overflow:"hidden", transition:"border .15s", boxShadow:open?`0 4px 20px ${cfg.color}18`:"0 1px 3px rgba(0,0,0,.05)" }}>
+      <div style={{ background:"#1c1c28", border:`1.5px solid ${open ? cfg.color+"55" : "rgba(255,255,255,0.06)"}`, borderRadius:13, marginBottom:10, overflow:"hidden", transition:"border .15s", boxShadow:open?`0 4px 20px ${cfg.color}18`:"0 2px 8px rgba(0,0,0,0.4)" }}>
 
         <div onClick={() => toggle(key)} style={{ padding:"14px 16px", cursor:"pointer", display:"flex", gap:12, alignItems:"flex-start" }}>
           <div style={{ minWidth:30, height:30, borderRadius:9, background:cfg.color+"18", border:`1.5px solid ${cfg.color}30`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, color:cfg.color, flexShrink:0, marginTop:1 }}>
             {idx+1}
           </div>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontSize:14, fontWeight:600, color:"rgba(255,255,255,0.92)", lineHeight:1.6, marginBottom:7 }}>{q.q}</div>
+            <div style={{ fontSize:14, fontWeight:600, color:"#f1f1f5", lineHeight:1.6, marginBottom:7 }}>{q.q}</div>
             <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
               {q.difficulty && <span style={{ padding:"2px 9px", background:DIFF_BG[q.difficulty]||"rgba(255,255,255,0.08)", borderRadius:5, fontSize:11, fontWeight:700, color:DIFF_COLOR[q.difficulty]||"rgba(255,255,255,0.45)" }}>{q.difficulty}</span>}
-              {q.company && <span style={{ padding:"2px 9px", background:"#dbeafe", borderRadius:5, fontSize:11, fontWeight:600, color:"#1e40af" }}>🏢 {q.company}</span>}
-              {q.source  && <span style={{ padding:"2px 9px", background:"#f3e8ff", borderRadius:5, fontSize:11, fontWeight:600, color:"#7c3aed" }}>📎 {q.source}</span>}
+              {q.company && <span style={{ padding:"2px 9px", background:"rgba(56,189,248,0.1)", borderRadius:5, fontSize:11, fontWeight:600, color:"#38bdf8" }}>🏢 {q.company}</span>}
+              {q.source  && <span style={{ padding:"2px 9px", background:"rgba(167,139,250,0.1)", borderRadius:5, fontSize:11, fontWeight:600, color:"#a78bfa" }}>📎 {q.source}</span>}
               {bm && <span style={{ fontSize:11, color:"#d97706", fontWeight:600 }}>⭐ Saved</span>}
             </div>
           </div>
@@ -185,8 +186,8 @@ export default function InterviewPrep() {
             <pre style={{ margin:0, whiteSpace:"pre-wrap", lineHeight:1.75,
               fontFamily: dk==="coding" ? "'Geist Mono','Courier New',monospace" : "inherit",
               fontSize:   dk==="coding" ? 12.5 : 13.5,
-              background: dk==="coding" ? "#1a1b26" : "transparent",
-              color:      dk==="coding" ? "#c0caf5" : "#1e293b",
+              background: dk==="coding" ? "#0d0d14" : "rgba(255,255,255,0.03)",
+              color:      dk==="coding" ? "#c0caf5" : "#f1f1f5",
               padding:    dk==="coding" ? "16px" : "0",
               borderRadius: dk==="coding" ? 9 : 0, overflowX:"auto",
             }}>{q.a}</pre>
@@ -238,7 +239,7 @@ export default function InterviewPrep() {
             onFocus={e=>{e.target.style.borderColor="var(--teal)";e.target.style.boxShadow="0 0 0 3px rgba(13,148,136,.1)";}}
             onBlur={e=>{e.target.style.borderColor="rgba(255,255,255,0.1)";e.target.style.boxShadow="none";}} />
           <button onClick={() => confirmRole(inputRole)}
-            style={{ padding:"13px 28px", background:"var(--teal)", border:"none", borderRadius:10, color:"white", fontSize:14, fontWeight:700, cursor:"pointer", boxShadow:"0 2px 10px rgba(13,148,136,.35)", flexShrink:0 }}>
+            style={{ padding:"13px 28px", background:"var(--teal)", border:"none", borderRadius:10, color:"white", fontSize:14, fontWeight:700, cursor:"pointer", boxShadow:"0 2px 10px rgba(52,211,153,.25)", flexShrink:0 }}>
             Next →
           </button>
         </div>
@@ -342,7 +343,7 @@ export default function InterviewPrep() {
             🔄 Refresh
           </button>
           <button onClick={exportPDF}
-            style={{ display:"flex", alignItems:"center", gap:7, padding:"9px 20px", background:"#1e40af", border:"none", borderRadius:9, color:"white", fontSize:13, fontWeight:700, cursor:"pointer", boxShadow:"0 2px 8px rgba(30,64,175,.3)" }}>
+            style={{ display:"flex", alignItems:"center", gap:7, padding:"9px 20px", background:"rgba(245,158,11,0.1)", border:"1px solid rgba(245,158,11,0.25)", borderRadius:9, color:"#f59e0b", fontSize:13, fontWeight:700, cursor:"pointer" }}>
             📄 Export PDF
           </button>
         </div>

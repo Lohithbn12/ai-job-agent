@@ -1,113 +1,111 @@
 // ─── StatCard.js ─────────────────────────────────────────────────────────────
-// Reusable premium dashboard stat card for JobSpark
-// Supports icon, value, label, trend, hover animation, click action
+// Obsidian Night stat card — dark luxury editorial
 
 import React, { useState } from "react";
 
 export default function StatCard({
-  label,
-  value,
-  icon,
-  color = "#1e6fd4",
-  trend,
-  trendType = "up", // up | down | neutral
+  label, value, icon,
+  color = "#f59e0b",
+  trend, trendType = "up",
   onClick,
 }) {
-  const [isHovered, setIsHovered] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
-  const trendColor =
-    trendType === "up"
-      ? "#22c55e"
-      : trendType === "down"
-      ? "#ef4444"
-      : "#94a3b8";
+  const trendColor = trendType === "up" ? "#34d399"
+                   : trendType === "down" ? "#fb7185"
+                   : "#8888a8";
 
   return (
     <div
       onClick={onClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
-        background: "white",
-        border: "1px solid rgba(30,111,212,0.08)",
-        borderRadius: 20,
+        background: hovered ? "#1c1c28" : "#16161f",
+        border: `1px solid ${hovered ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.06)"}`,
+        borderRadius: 14,
         padding: "20px 22px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         gap: 16,
-        boxShadow: isHovered
-          ? "0 10px 24px rgba(30,111,212,0.14)"
-          : "0 6px 18px rgba(30,111,212,0.08)",
-        transition: "all 0.25s ease",
+        boxShadow: hovered ? "0 12px 40px rgba(0,0,0,0.5)" : "0 4px 16px rgba(0,0,0,0.3)",
+        transition: "all 0.25s cubic-bezier(0.22,1,0.36,1)",
         cursor: onClick ? "pointer" : "default",
-        transform: isHovered ? "translateY(-3px)" : "translateY(0)",
+        transform: hovered ? "translateY(-4px)" : "translateY(0)",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
-      {/* Left Section */}
-      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-        <div
-          style={{
-            width: 54,
-            height: 54,
-            borderRadius: 16,
-            background: `${color}15`,
-            border: `1px solid ${color}30`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 22,
-            flexShrink: 0,
-          }}
-        >
+      {/* Subtle glow on hover */}
+      {hovered && (
+        <div style={{
+          position: "absolute",
+          top: -30, left: -30,
+          width: 100, height: 100,
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${color}20 0%, transparent 70%)`,
+          pointerEvents: "none",
+        }} />
+      )}
+
+      <div style={{ display: "flex", alignItems: "center", gap: 16, position: "relative" }}>
+        <div style={{
+          width: 52,
+          height: 52,
+          borderRadius: 14,
+          background: `${color}12`,
+          border: `1px solid ${color}25`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 22,
+          flexShrink: 0,
+          transition: "all 0.2s",
+          boxShadow: hovered ? `0 4px 16px ${color}30` : "none",
+        }}>
           {icon}
         </div>
 
         <div>
-          <div
-            style={{
-              fontFamily: "'Outfit', sans-serif",
-              fontSize: 28,
-              fontWeight: 800,
-              color: "#0f172a",
-              lineHeight: 1,
-            }}
-          >
+          <div style={{
+            fontFamily: "'Syne', sans-serif",
+            fontSize: 28,
+            fontWeight: 800,
+            color: "#f1f1f5",
+            lineHeight: 1,
+            letterSpacing: "-1px",
+          }}>
             {value}
           </div>
-
-          <div
-            style={{
-              fontSize: 12,
-              color: "#64748b",
-              marginTop: 4,
-              fontWeight: 500,
-            }}
-          >
+          <div style={{
+            fontSize: 12,
+            color: "#8888a8",
+            marginTop: 5,
+            fontWeight: 500,
+            fontFamily: "'DM Mono', monospace",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+          }}>
             {label}
           </div>
         </div>
       </div>
 
-      {/* Right Section - Trend */}
       {trend && (
-        <div
-          style={{
-            fontSize: 12,
-            fontWeight: 700,
-            color: trendColor,
-            background: `${trendColor}15`,
-            padding: "6px 10px",
-            borderRadius: 10,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {trendType === "up"
-            ? "▲"
-            : trendType === "down"
-            ? "▼"
-            : "●"}{" "}
-          {trend}
+        <div style={{
+          fontSize: 11,
+          fontWeight: 700,
+          color: trendColor,
+          background: `${trendColor}12`,
+          border: `1px solid ${trendColor}25`,
+          padding: "5px 10px",
+          borderRadius: 8,
+          whiteSpace: "nowrap",
+          fontFamily: "'DM Mono', monospace",
+          position: "relative",
+        }}>
+          {trendType === "up" ? "▲" : trendType === "down" ? "▼" : "●"} {trend}
         </div>
       )}
     </div>

@@ -157,7 +157,7 @@ function LinkedinAnalyzer() {
         <div className="card section" style={{ textAlign: "center", padding: "32px 24px" }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
           <h3 style={{ marginBottom: 8 }}>How would you like to add your profile?</h3>
-          <p style={{ color: "#64748b", fontSize: 14, marginBottom: 28 }}>
+          <p style={{ color: "#8888a8", fontSize: 14, marginBottom: 28 }}>
             Choose the easiest option for you
           </p>
 
@@ -177,7 +177,7 @@ function LinkedinAnalyzer() {
                     borderRadius: 4, padding: "2px 7px", marginLeft: 8, verticalAlign: "middle"
                   }}>RECOMMENDED</span>
                 </div>
-                <div style={{ color: "#64748b", fontSize: 13 }}>
+                <div style={{ color: "#8888a8", fontSize: 13 }}>
                   Export your profile as a PDF from LinkedIn and upload it here. We'll fill everything in automatically.
                 </div>
               </div>
@@ -194,7 +194,7 @@ function LinkedinAnalyzer() {
               <span style={{ fontSize: 32 }}>✏️</span>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Fill in Manually</div>
-                <div style={{ color: "#64748b", fontSize: 13 }}>
+                <div style={{ color: "#8888a8", fontSize: 13 }}>
                   Type in your profile details directly. Best if you want full control over what gets analyzed.
                 </div>
               </div>
@@ -223,7 +223,7 @@ function LinkedinAnalyzer() {
             onClick={() => setShowGuide(!showGuide)}
           >
             <h3 style={{ margin: 0 }}>📋 How to export your LinkedIn PDF</h3>
-            <span style={{ color: "#64748b", fontSize: 20 }}>{showGuide ? "▲" : "▼"}</span>
+            <span style={{ color: "#8888a8", fontSize: 20 }}>{showGuide ? "▲" : "▼"}</span>
           </div>
 
           {showGuide && (
@@ -239,7 +239,7 @@ function LinkedinAnalyzer() {
                     fontSize: 16, flexShrink: 0
                   }}>{step.icon}</div>
                   <div>
-                    <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 2 }}>Step {i + 1}</div>
+                    <div style={{ fontSize: 12, color: "#444460", marginBottom: 2 }}>Step {i + 1}</div>
                     <div style={{ fontSize: 14 }}>{step.text}</div>
                   </div>
                 </div>
@@ -279,7 +279,7 @@ function LinkedinAnalyzer() {
               <>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>📤</div>
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>Drop your PDF here</div>
-                <div style={{ color: "#64748b", fontSize: 13 }}>or click to browse files</div>
+                <div style={{ color: "#8888a8", fontSize: 13 }}>or click to browse files</div>
               </>
             )}
 
@@ -287,7 +287,7 @@ function LinkedinAnalyzer() {
               <>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>⏳</div>
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>Reading your profile...</div>
-                <div style={{ color: "#64748b", fontSize: 13 }}>This takes just a second</div>
+                <div style={{ color: "#8888a8", fontSize: 13 }}>This takes just a second</div>
               </>
             )}
 
@@ -295,8 +295,8 @@ function LinkedinAnalyzer() {
               <>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>❌</div>
                 <div style={{ fontWeight: 600, color: "#f43f5e", marginBottom: 6 }}>Upload failed</div>
-                <div style={{ color: "#94a3b8", fontSize: 13 }}>{pdfError}</div>
-                <div style={{ color: "#64748b", fontSize: 12, marginTop: 8 }}>Click to try again</div>
+                <div style={{ color: "#444460", fontSize: 13 }}>{pdfError}</div>
+                <div style={{ color: "#8888a8", fontSize: 12, marginTop: 8 }}>Click to try again</div>
               </>
             )}
           </div>
@@ -342,7 +342,7 @@ function LinkedinAnalyzer() {
           display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "12px 16px", background: "#0f1f3d", border: "1px solid #1e3a5f"
         }}>
-          <div style={{ fontSize: 13, color: "#94a3b8" }}>
+          <div style={{ fontSize: 13, color: "#444460" }}>
             💡 Want to auto-fill from PDF instead?
           </div>
           <button
